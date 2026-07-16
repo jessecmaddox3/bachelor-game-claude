@@ -13,6 +13,14 @@ export type FontBuffers = Record<FontId, ArrayBuffer>;
  * Exact text measurement against the bundled font files.
  * The PDF and PNG exports embed these same files, so a measurement here
  * is identical everywhere. All return values are in inches.
+ *
+ * Kerning: `getAdvanceWidth` applies kerning by default, so widths are NOT
+ * strictly additive — `widthIn("AB") ≠ widthIn("A") + widthIn("B")`. Callers
+ * must measure whole strings, never sum substring widths.
+ *
+ * Cost: construction parses the TTF binaries (~15ms for the three fonts).
+ * Construct once and reuse the instance — never per-measurement or
+ * per-loop-iteration.
  */
 export class FontMetrics {
   private fonts: Record<FontId, Font>;
@@ -29,6 +37,8 @@ export class FontMetrics {
     return this.fonts[fontId].getAdvanceWidth(text, sizePt) / PT_PER_IN;
   }
 
+  // Intentionally omits hhea.lineGap (all three bundled fonts have lineGap 0;
+  // revisit if fonts are ever swapped).
   lineHeightIn(fontId: FontId, sizePt: number): number {
     const f = this.fonts[fontId];
     return (((f.ascender - f.descender) / f.unitsPerEm) * sizePt) / PT_PER_IN;
