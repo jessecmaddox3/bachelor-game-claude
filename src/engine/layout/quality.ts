@@ -1,5 +1,5 @@
 import type { BoardSpec, PosterSizeId } from '../../models/boardSpec';
-import type { GridLayout } from './gridSolver';
+import { FLOOR_PT, type GridLayout } from './gridSolver';
 
 export type Grade = 'good' | 'tight' | 'poor';
 
@@ -36,7 +36,11 @@ export function gradeLayout(layout: GridLayout, spec: BoardSpec): QualityReport 
     advice.push(`${layout.degradations.ellipsized} item(s) were shortened with "…". ${suggest}.`);
   }
   if (layout.bodyPt <= 9.5) {
-    advice.push(`Body text is at the ${layout.bodyPt}pt minimum and may be hard to read from a distance. ${suggest}.`);
+    advice.push(
+      layout.bodyPt <= FLOOR_PT
+        ? `Body text is at the ${layout.bodyPt}pt minimum and may be hard to read from a distance. ${suggest}.`
+        : `Body text is small (${layout.bodyPt}pt) and may be hard to read from a distance. ${suggest}.`,
+    );
   }
   if (grade === 'tight') advice.push(`Everything fits but the board is dense. ${suggest} for more breathing room.`);
   if (grade === 'poor' && advice.length === 0) advice.push(`Rows are near the minimum height. ${suggest}.`);
