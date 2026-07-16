@@ -6,6 +6,8 @@ import { makeSpec } from '../helpers/fixtures';
 import { testMetrics } from '../helpers/loadFonts';
 import { overflowingRuns, outOfPage } from '../helpers/invariants';
 import type { TextRun, RectPrim, LinePrim } from '../../src/engine/scene/types';
+import { HIGHLIGHT } from '../../src/engine/scene/colors';
+import { buildBoard } from '../../src/engine/buildBoard';
 
 const m = testMetrics();
 
@@ -96,5 +98,70 @@ describe('composeScene: grid', () => {
     });
     expect(overflowingRuns(scene, m)).toEqual([]);
     expect(outOfPage(scene)).toEqual([]);
+  });
+});
+
+describe('composeScene: bespoke elements and rules', () => {
+  it('draws the highlight box around the points header when themed on', () => {
+    const { scene } = build();
+    const highlights = scene.primitives.filter(
+      (p): p is RectPrim => p.kind === 'rect' && p.stroke === HIGHLIGHT,
+    );
+    expect(highlights).toHaveLength(1);
+  });
+
+  it('omits the highlight box when themed off', () => {
+    const { scene } = build({ theme: { highlightPointsHeader: false } });
+    const highlights = scene.primitives.filter(
+      (p): p is RectPrim => p.kind === 'rect' && p.stroke === HIGHLIGHT,
+    );
+    expect(highlights).toHaveLength(0);
+  });
+
+  it('draws a bonus bracket beside contiguous bonus rows', () => {
+    const activities = [
+      ...Array.from({ length: 10 }, (_, i) => ({ name: `Task ${i}`, points: 1 })),
+      { name: 'Beer pong finals', points: 'TBD', bonus: true },
+      { name: 'Flip cup finals', points: 'TBD', bonus: true },
+    ];
+    const { scene } = build({ activities });
+    const bracketLines = scene.primitives.filter(
+      (p): p is LinePrim => p.kind === 'line' && p.color === HIGHLIGHT,
+    );
+    expect(bracketLines.length).toBeGreaterThanOrEqual(1);
+    expect(outOfPage(scene)).toEqual([]);
+  });
+
+  it('renders the rules text wrapped and fitting', () => {
+    const { spec, scene } = build();
+    const all = texts(scene).map((t) => t.text).join(' ');
+    expect(all).toContain('Score your own points honestly.');
+    expect(overflowingRuns(scene, m)).toEqual([]);
+  });
+});
+
+describe('buildBoard', () => {
+  it('returns scene + quality for a valid spec', () => {
+    const result = buildBoard(makeSpec(), m);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.scene.primitives.length).toBeGreaterThan(50);
+    expect(['good', 'tight', 'poor']).toContain(result.quality.grade);
+  });
+
+  it('returns a reason for an infeasible spec', () => {
+    const spec = makeSpec({
+      posterSize: '18x24',
+      players: Array.from({ length: 35 }, (_, i) => `Player Number ${i + 1}`),
+      activities: Array.from({ length: 80 }, (_, i) => ({ name: `Task ${i}`, points: 1 })),
+    });
+    const result = buildBoard(spec, m);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.reason.length).toBeGreaterThan(10);
+  });
+
+  it('rejects invalid input with a Zod error', () => {
+    expect(() => buildBoard({ nonsense: true }, m)).toThrow();
   });
 });

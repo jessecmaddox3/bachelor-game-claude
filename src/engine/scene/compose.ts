@@ -4,9 +4,9 @@ import type { GridLayout } from '../layout/gridSolver';
 import type { FontMetrics, FontId } from '../fonts/metrics';
 import type { Scene, Primitive } from './types';
 import type { Box } from '../geometry';
-import { fitSizePt } from '../layout/wrap';
+import { fitSizePt, wrapToWidth } from '../layout/wrap';
 import { CELL_PAD, POINTS_HEADER, TOTALS_LABEL } from '../layout/gridSolver';
-import { INK, GRID_LINE, PAGE_BG } from './colors';
+import { INK, GRID_LINE, PAGE_BG, HIGHLIGHT } from './colors';
 
 export function composeScene(spec: BoardSpec, regions: Regions, layout: GridLayout, m: FontMetrics): Scene {
   const prims: Primitive[] = [];
@@ -15,6 +15,8 @@ export function composeScene(spec: BoardSpec, regions: Regions, layout: GridLayo
   composeHeader(spec, regions, m, prims);
   if (regions.rail) composeRail(regions.rail, m, prims);
   composeGrid(spec, regions.grid, layout, m, prims);
+  composeExtras(spec, regions.grid, layout, m, prims);
+  if (regions.rules) composeRules(spec, regions.rules, m, prims);
 
   return { widthIn: regions.pageW, heightIn: regions.pageH, primitives: prims };
 }
@@ -188,5 +190,72 @@ function composeGrid(spec: BoardSpec, grid: Box, L: GridLayout, m: FontMetrics, 
   ys.push(gridBottom);
   for (const y of ys) {
     prims.push({ kind: 'line', x1: grid.x, y1: y, x2: grid.x + grid.w, y2: y, color: GRID_LINE, widthIn: 0.015 });
+  }
+}
+
+function composeExtras(spec: BoardSpec, grid: Box, L: GridLayout, m: FontMetrics, prims: Primitive[]) {
+  const rowY = (r: number) => grid.y + L.headerBandH + r * L.rowH;
+
+  // Steven-poster highlight box around the POSSIBLE POINTS column header
+  if (spec.theme.highlightPointsHeader) {
+    prims.push({
+      kind: 'rect',
+      box: { x: grid.x + L.taskColW - 0.05, y: grid.y - 0.05, w: L.pointsColW + 0.1, h: L.headerBandH + 0.1 },
+      stroke: HIGHLIGHT,
+      strokeWidthIn: 0.05,
+    });
+  }
+
+  // Bracket beside contiguous runs of bonus rows, with a rotated BONUS label.
+  // A left rail occupies the space the label needs, so draw the line only in that case.
+  if (spec.theme.bonusBracket) {
+    const leftRail = spec.sideRail?.side === 'left';
+    let start = -1;
+    const flush = (end: number) => {
+      if (start < 0) return;
+      const y1 = rowY(start) + 0.05;
+      const y2 = rowY(end) - 0.05;
+      const x = grid.x - 0.15;
+      prims.push({ kind: 'line', x1: x, y1, x2: x, y2, color: HIGHLIGHT, widthIn: 0.04 });
+      prims.push({ kind: 'line', x1: x, y1, x2: x + 0.1, y2: y1, color: HIGHLIGHT, widthIn: 0.04 });
+      prims.push({ kind: 'line', x1: x, y1: y2, x2: x + 0.1, y2, color: HIGHLIGHT, widthIn: 0.04 });
+      if (!leftRail) {
+        const labelBox: Box = { x: x - 0.33, y: y1, w: 0.3, h: y2 - y1 };
+        const pt = fitSizePt('BONUS', labelBox.h, labelBox.w, 'bodyBold', m, 14, 6);
+        if (pt !== null) {
+          prims.push({ kind: 'text', box: labelBox, text: 'BONUS', fontId: 'bodyBold', sizePt: pt, color: HIGHLIGHT, align: 'center', rotate: -90 });
+        }
+      }
+      start = -1;
+    };
+    spec.activities.forEach((a, r) => {
+      if (a.bonus && start < 0) start = r;
+      if (!a.bonus) flush(r);
+    });
+    flush(spec.activities.length);
+  }
+}
+
+function composeRules(spec: BoardSpec, box: Box, m: FontMetrics, prims: Primitive[]) {
+  const text = spec.rules.map((r, i) => `${i + 1}. ${r}`).join('    ');
+  for (let pt = 14; pt >= 7; pt -= 0.5) {
+    const { lines } = wrapToWidth(text, box.w - 0.4, 'body', pt, m, 99);
+    const lineH = m.lineHeightIn('body', pt);
+    if (lines.length * lineH <= box.h - 0.2) {
+      let y = box.y + 0.1;
+      for (const line of lines) {
+        prims.push({
+          kind: 'text',
+          box: { x: box.x + 0.2, y, w: box.w - 0.4, h: lineH },
+          text: line,
+          fontId: 'body',
+          sizePt: pt,
+          color: INK,
+          align: 'left',
+        });
+        y += lineH;
+      }
+      return;
+    }
   }
 }
