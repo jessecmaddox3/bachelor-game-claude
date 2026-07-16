@@ -12,7 +12,7 @@ export function overflowingRuns(scene: Scene, m: FontMetrics): TextRun[] {
   });
 }
 
-/** Any primitive whose extent escapes the page bounds. */
+/** Any primitive whose extent escapes the page bounds. Assumes non-negative box dimensions (the layout engine never produces negative w/h) and ignores stroke overhang per the RectPrim contract. */
 export function outOfPage(scene: Scene): Primitive[] {
   return scene.primitives.filter((p) => {
     let x1: number, y1: number, x2: number, y2: number;
