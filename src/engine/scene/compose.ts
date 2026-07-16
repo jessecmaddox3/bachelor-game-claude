@@ -5,7 +5,7 @@ import type { FontMetrics, FontId } from '../fonts/metrics';
 import type { Scene, Primitive } from './types';
 import type { Box } from '../geometry';
 import { fitSizePt } from '../layout/wrap';
-import { CELL_PAD, POINTS_HEADER } from '../layout/gridSolver';
+import { CELL_PAD, POINTS_HEADER, TOTALS_LABEL } from '../layout/gridSolver';
 import { INK, GRID_LINE, PAGE_BG } from './colors';
 
 export function composeScene(spec: BoardSpec, regions: Regions, layout: GridLayout, m: FontMetrics): Scene {
@@ -169,7 +169,7 @@ function composeGrid(spec: BoardSpec, grid: Box, L: GridLayout, m: FontMetrics, 
   prims.push({
     kind: 'text',
     box: { x: grid.x + CELL_PAD, y: totY + (L.rowH - lineH) / 2, w: L.taskColW - 2 * CELL_PAD, h: lineH },
-    text: 'TOTAL',
+    text: TOTALS_LABEL,
     fontId: 'bodyBold',
     sizePt: L.bodyPt,
     color: INK,

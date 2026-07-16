@@ -12,6 +12,9 @@ export const CELL_PAD = 0.08;
 /** Rotated header text for the points column (single source of truth). */
 export const POINTS_HEADER = 'POSSIBLE POINTS';
 
+/** Totals-row label in the task column (single source of truth). */
+export const TOTALS_LABEL = 'TOTAL';
+
 export interface GridLayout {
   feasible: true;
   bodyPt: number;
@@ -86,12 +89,17 @@ function tryFit(grid: Box, spec: BoardSpec, m: FontMetrics, pt: number): GridLay
   );
 
   // Task column: natural measured width, capped at 34% of the grid; wrap to 2 lines past the cap.
-  const taskCap = grid.w * 0.34;
-  const naturalTaskW = Math.max(...spec.activities.map((a) => m.widthIn(a.name, 'body', pt))) + 2 * CELL_PAD;
-  const taskColW = Math.min(naturalTaskW, taskCap);
+  // The column must also host the bold TOTALS_LABEL. The inner text budget is computed
+  // ONCE and the column width derived from it — never the reverse — so the widest name
+  // fits its wrap budget by exact float equality (no +pad/-pad round trip).
+  const capInner = grid.w * 0.34 - 2 * CELL_PAD;
+  const totalNeed = m.widthIn(TOTALS_LABEL, 'bodyBold', pt);
+  const naturalInner = Math.max(totalNeed, ...spec.activities.map((a) => m.widthIn(a.name, 'body', pt)));
+  const taskInner = Math.min(naturalInner, capInner);
+  const taskColW = taskInner + 2 * CELL_PAD;
   let wrappedTasks = 0;
   const taskLines = spec.activities.map((a) => {
-    const r = wrapToWidth(a.name, taskColW - 2 * CELL_PAD, 'body', pt, m, 2);
+    const r = wrapToWidth(a.name, taskInner, 'body', pt, m, 2);
     if (r.lines.length > 1) wrappedTasks++;
     if (r.ellipsized) ellipsized++;
     return r.lines;
