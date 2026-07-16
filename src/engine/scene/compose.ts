@@ -5,7 +5,7 @@ import type { FontMetrics, FontId } from '../fonts/metrics';
 import type { Scene, Primitive } from './types';
 import type { Box } from '../geometry';
 import { fitSizePt } from '../layout/wrap';
-import { CELL_PAD } from '../layout/gridSolver';
+import { CELL_PAD, POINTS_HEADER } from '../layout/gridSolver';
 import { INK, GRID_LINE, PAGE_BG } from './colors';
 
 export function composeScene(spec: BoardSpec, regions: Regions, layout: GridLayout, m: FontMetrics): Scene {
@@ -124,9 +124,11 @@ function composeGrid(spec: BoardSpec, grid: Box, L: GridLayout, m: FontMetrics, 
     w: L.pointsColW - 2 * CELL_PAD,
     h: L.headerBandH - 2 * CELL_PAD,
   };
-  const ppPt = fitSizePt('POSSIBLE POINTS', ppBox.h, ppBox.w, 'bodyBold', m, L.bodyPt, 6);
+  // The solver guarantees the band fits POINTS_HEADER at up to 10pt; the null
+  // guard stays as defense-in-depth only.
+  const ppPt = fitSizePt(POINTS_HEADER, ppBox.h, ppBox.w, 'bodyBold', m, L.bodyPt, 6);
   if (ppPt !== null) {
-    prims.push({ kind: 'text', box: ppBox, text: 'POSSIBLE POINTS', fontId: 'bodyBold', sizePt: ppPt, color: INK, align: 'left', rotate: -90 });
+    prims.push({ kind: 'text', box: ppBox, text: POINTS_HEADER, fontId: 'bodyBold', sizePt: ppPt, color: INK, align: 'left', rotate: -90 });
   }
 
   // Task labels (one TextRun per wrapped line) and points values
@@ -181,7 +183,8 @@ function composeGrid(spec: BoardSpec, grid: Box, L: GridLayout, m: FontMetrics, 
     prims.push({ kind: 'line', x1: x, y1: grid.y, x2: x, y2: gridBottom, color: GRID_LINE, widthIn: 0.015 });
   }
   const ys = [grid.y, grid.y + L.headerBandH];
-  for (let r = 1; r <= rows; r++) ys.push(rowY(r));
+  // Skip rowY(rows): the heavy INK totals border already marks that boundary and must paint last.
+  for (let r = 1; r < rows; r++) ys.push(rowY(r));
   ys.push(gridBottom);
   for (const y of ys) {
     prims.push({ kind: 'line', x1: grid.x, y1: y, x2: grid.x + grid.w, y2: y, color: GRID_LINE, widthIn: 0.015 });

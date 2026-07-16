@@ -9,6 +9,9 @@ export const MIN_COL_W = 0.55;
 export const MIN_ROW_H = 0.28;
 export const CELL_PAD = 0.08;
 
+/** Rotated header text for the points column (single source of truth). */
+export const POINTS_HEADER = 'POSSIBLE POINTS';
+
 export interface GridLayout {
   feasible: true;
   bodyPt: number;
@@ -62,7 +65,10 @@ function tryFit(grid: Box, spec: BoardSpec, m: FontMetrics, pt: number): GridLay
   // Header band: rotated player names need vertical room equal to their measured width.
   const bandCap = grid.h * 0.22;
   const longestName = Math.max(...spec.players.map((p) => m.widthIn(p, 'bodyBold', pt)));
-  let headerBandH = longestName + 2 * CELL_PAD;
+  // Band minimum: always tall enough for the rotated points header at up to 10pt,
+  // so uniformly short player names can never squeeze it out of the header band.
+  const ppNeed = m.widthIn(POINTS_HEADER, 'bodyBold', Math.min(pt, 10));
+  let headerBandH = Math.max(longestName, ppNeed) + 2 * CELL_PAD;
   let playerNames = [...spec.players];
   if (headerBandH > bandCap) {
     headerBandH = bandCap;
