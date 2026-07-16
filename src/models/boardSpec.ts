@@ -9,6 +9,8 @@ export const POSTER_SIZES = {
 
 export type PosterSizeId = keyof typeof POSTER_SIZES;
 
+export const POSTER_SIZE_IDS = Object.keys(POSTER_SIZES) as [PosterSizeId, ...PosterSizeId[]];
+
 export const boardSpecSchema = z.object({
   title: z.string().min(1).max(60),
   honoree: z.string().min(1).max(30),
@@ -24,7 +26,7 @@ export const boardSpecSchema = z.object({
     )
     .min(5)
     .max(80),
-  posterSize: z.enum(['18x24', '24x36', '36x48', '48x72']),
+  posterSize: z.enum(POSTER_SIZE_IDS),
   rules: z.array(z.string().min(1).max(200)).max(8).default([]),
   theme: z
     .object({
