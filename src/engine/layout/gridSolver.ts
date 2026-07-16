@@ -1,0 +1,111 @@
+import type { BoardSpec } from '../../models/boardSpec';
+import type { Box } from '../geometry';
+import type { FontMetrics } from '../fonts/metrics';
+import { wrapToWidth, hardEllipsize } from './wrap';
+
+// Print-informed floors (from the spec)
+export const FLOOR_PT = 9;
+export const MIN_COL_W = 0.55;
+export const MIN_ROW_H = 0.28;
+export const CELL_PAD = 0.08;
+
+export interface GridLayout {
+  feasible: true;
+  bodyPt: number;
+  headerBandH: number;
+  rowH: number;
+  taskColW: number;
+  pointsColW: number;
+  playerColW: number;
+  /** wrapped (and possibly ellipsized) label lines, per activity */
+  taskLines: string[][];
+  /** player names, possibly ellipsized to fit the header band */
+  playerNames: string[];
+  degradations: { wrappedTasks: number; ellipsized: number };
+}
+
+export interface Infeasible {
+  feasible: false;
+  reason: string;
+}
+
+export type SolveResult = GridLayout | Infeasible;
+
+/**
+ * Walk a font-size ladder from a poster-scaled starting size down to the
+ * floor; the first size whose fully-measured layout fits wins. Degradations
+ * (wrapping, ellipsizing) happen inside each attempt and are reported, never
+ * silent.
+ */
+export function solveGrid(grid: Box, spec: BoardSpec, m: FontMetrics): SolveResult {
+  const startPt = Math.min(20, Math.max(FLOOR_PT, grid.h * 0.7));
+  for (let pt = startPt; pt >= FLOOR_PT; pt -= 0.5) {
+    const layout = tryFit(grid, spec, m, pt);
+    if (layout) return layout;
+  }
+  return {
+    feasible: false,
+    reason:
+      `${spec.players.length} players and ${spec.activities.length} activities cannot fit legibly ` +
+      `on a ${spec.posterSize} poster. Choose a larger size or remove players/activities.`,
+  };
+}
+
+function tryFit(grid: Box, spec: BoardSpec, m: FontMetrics, pt: number): GridLayout | null {
+  const lineH = m.lineHeightIn('body', pt);
+  let ellipsized = 0;
+
+  // Header band: rotated player names need vertical room equal to their measured width.
+  const bandCap = grid.h * 0.22;
+  const longestName = Math.max(...spec.players.map((p) => m.widthIn(p, 'bodyBold', pt)));
+  let headerBandH = longestName + 2 * CELL_PAD;
+  let playerNames = [...spec.players];
+  if (headerBandH > bandCap) {
+    headerBandH = bandCap;
+    playerNames = spec.players.map((p) => {
+      const r = hardEllipsize(p, bandCap - 2 * CELL_PAD, 'bodyBold', pt, m);
+      if (r.ellipsized) ellipsized++;
+      return r.text;
+    });
+  }
+
+  // Points column sized to its widest value ("999" or "TBD").
+  const pointsColW = Math.max(
+    MIN_COL_W,
+    Math.max(...spec.activities.map((a) => m.widthIn(String(a.points), 'bodyBold', pt))) + 2 * CELL_PAD,
+  );
+
+  // Task column: natural measured width, capped at 34% of the grid; wrap to 2 lines past the cap.
+  const taskCap = grid.w * 0.34;
+  const naturalTaskW = Math.max(...spec.activities.map((a) => m.widthIn(a.name, 'body', pt))) + 2 * CELL_PAD;
+  const taskColW = Math.min(naturalTaskW, taskCap);
+  let wrappedTasks = 0;
+  const taskLines = spec.activities.map((a) => {
+    const r = wrapToWidth(a.name, taskColW - 2 * CELL_PAD, 'body', pt, m, 2);
+    if (r.lines.length > 1) wrappedTasks++;
+    if (r.ellipsized) ellipsized++;
+    return r.lines;
+  });
+
+  // Player columns split the remainder; rotated names also need horizontal room for one line height.
+  const playerColW = (grid.w - taskColW - pointsColW) / spec.players.length;
+  if (playerColW < Math.max(MIN_COL_W, m.lineHeightIn('bodyBold', pt) + 2 * CELL_PAD)) return null;
+
+  // Rows: activities + one totals row share what the header band leaves.
+  const maxLines = Math.max(...taskLines.map((l) => l.length));
+  const rowH = (grid.h - headerBandH) / (spec.activities.length + 1);
+  if (rowH < Math.max(MIN_ROW_H, maxLines * lineH + 2 * CELL_PAD)) return null;
+
+  return {
+    feasible: true,
+    bodyPt: pt,
+    headerBandH,
+    rowH,
+    taskColW,
+    pointsColW,
+    playerColW,
+    taskLines,
+    playerNames,
+    degradations: { wrappedTasks, ellipsized },
+  };
+}
