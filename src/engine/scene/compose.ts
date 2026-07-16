@@ -39,11 +39,15 @@ function fittedLine(
 
 function composeHeader(spec: BoardSpec, regions: Regions, m: FontMetrics, prims: Primitive[]) {
   const h = regions.header;
-  const rows: Array<[string, number, FontId]> = spec.subtitle
+  // Single truthiness source: an empty-string subtitle behaves exactly like an
+  // absent one (2-row header, and the last row — the honoree — is never capped).
+  const subtitle = spec.subtitle;
+  const hasSubtitle = Boolean(subtitle);
+  const rows: Array<[string, number, FontId]> = subtitle
     ? [
         [spec.title, 0.5, 'display'],
         [spec.honoree, 0.32, 'display'],
-        [spec.subtitle, 0.18, 'bodyBold'],
+        [subtitle, 0.18, 'bodyBold'],
       ]
     : [
         [spec.title, 0.6, 'display'],
@@ -58,7 +62,7 @@ function composeHeader(spec: BoardSpec, regions: Regions, m: FontMetrics, prims:
     // otherwise land smaller than its caption. Cap the subtitle (last row when
     // present) at 80% of the title's fitted size: the subtitle must never
     // visually outrank the title. Honoree stays uncapped by design.
-    const isSubtitle = spec.subtitle !== undefined && i === rows.length - 1;
+    const isSubtitle = hasSubtitle && i === rows.length - 1;
     const maxPt = isSubtitle && titlePt !== null ? titlePt * 0.8 : 300;
     const pt = fittedLine(text, rowBox, fontId, m, prims, maxPt);
     if (i === 0) titlePt = pt;
