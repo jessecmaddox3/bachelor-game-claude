@@ -3,12 +3,41 @@ import { POSTER_SIZES } from '../../models/boardSpec';
 import type { Box } from '../geometry';
 import { clamp } from '../geometry';
 
+/**
+ * Pass 1 output: the poster page carved into non-overlapping regions.
+ *
+ * Coordinate system: every Box is in inches, measured from the page's
+ * top-left origin (Box semantics per geometry.ts). All regions sit inside
+ * the page margins by construction.
+ *
+ * This interface is FROZEN: the grid solver, quality grade, and scene
+ * composition passes all consume it.
+ */
 export interface Regions {
+  /** Page width in inches (from POSTER_SIZES). */
   pageW: number;
+  /** Page height in inches (from POSTER_SIZES). */
   pageH: number;
+  /** Title block. Spans the full content width at the top of the page. */
   header: Box;
+  /**
+   * The rectangle the grid solver (Pass 2) fills with the task/points/player
+   * columns. Sits REGION_GAP below the header and, when rules are present,
+   * ends REGION_GAP above the rules region.
+   */
   grid: Box;
+  /**
+   * Rules strip pinned to the content bottom at full content width.
+   * `undefined` when the spec has no rules (never a zero-sized box).
+   */
   rules?: Box;
+  /**
+   * Optional side rail. `undefined` when no rail is requested (never a
+   * zero-sized box). The rail spans exactly the grid's vertical band and has
+   * already stolen its width (plus REGION_GAP) from the grid, never from
+   * header/rules. `title` is a passthrough of `spec.sideRail.title`. The
+   * requested rail width is silently capped at 30% of the content width.
+   */
   rail?: { box: Box; title: string };
 }
 
