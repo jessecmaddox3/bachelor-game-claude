@@ -5,7 +5,7 @@ import { solveGrid } from '../../src/engine/layout/gridSolver';
 import { makeSpec } from '../helpers/fixtures';
 import { testMetrics } from '../helpers/loadFonts';
 import { overflowingRuns, outOfPage } from '../helpers/invariants';
-import type { TextRun } from '../../src/engine/scene/types';
+import type { TextRun, RectPrim, LinePrim } from '../../src/engine/scene/types';
 
 const m = testMetrics();
 
@@ -46,6 +46,54 @@ describe('composeScene: header and rail', () => {
   it('draws the rail box and title when a rail is reserved', () => {
     const { scene } = build({ sideRail: { side: 'right', widthIn: 5, title: 'BEER PONG BRACKET' } });
     expect(texts(scene).map((t) => t.text)).toContain('BEER PONG BRACKET');
+    expect(overflowingRuns(scene, m)).toEqual([]);
+    expect(outOfPage(scene)).toEqual([]);
+  });
+});
+
+describe('composeScene: grid', () => {
+  it('renders every player name rotated in the header band', () => {
+    const { spec, scene } = build();
+    const rotated = texts(scene).filter((t) => t.rotate === -90);
+    for (const p of spec.players) {
+      expect(rotated.map((t) => t.text)).toContain(p);
+    }
+    expect(overflowingRuns(scene, m)).toEqual([]);
+  });
+
+  it('renders every task label and its points value', () => {
+    const { spec, scene } = build();
+    const strings = texts(scene).map((t) => t.text);
+    expect(strings).toContain(spec.activities[0].name);
+    expect(strings).toContain(String(spec.activities[0].points));
+    expect(strings).toContain('TOTAL');
+  });
+
+  it('tints alternate rows with the theme color', () => {
+    const { spec, scene } = build();
+    const tints = scene.primitives.filter(
+      (p): p is RectPrim => p.kind === 'rect' && p.fill === spec.theme.rowTint,
+    );
+    expect(tints.length).toBe(Math.floor(spec.activities.length / 2));
+  });
+
+  it('draws one vertical line per column boundary', () => {
+    const { spec, scene } = build();
+    const verticals = scene.primitives.filter(
+      (p): p is LinePrim => p.kind === 'line' && Math.abs(p.x1 - p.x2) < 0.001,
+    );
+    // outer left/right + task/points boundary + points/players boundary + between players
+    expect(verticals.length).toBeGreaterThanOrEqual(spec.players.length + 3);
+  });
+
+  it('passes invariants at a dense but feasible spec', () => {
+    const { scene } = build({
+      posterSize: '24x36',
+      activities: Array.from({ length: 50 }, (_, i) => ({
+        name: `Do the challenge that is listed as number ${i + 1} here`,
+        points: (i % 9) + 1,
+      })),
+    });
     expect(overflowingRuns(scene, m)).toEqual([]);
     expect(outOfPage(scene)).toEqual([]);
   });
