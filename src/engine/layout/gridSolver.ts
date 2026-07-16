@@ -36,9 +36,13 @@ export type SolveResult = GridLayout | Infeasible;
  * floor; the first size whose fully-measured layout fits wins. Degradations
  * (wrapping, ellipsizing) happen inside each attempt and are reported, never
  * silent.
+ *
+ * The ladder is aligned to the 0.5pt grid (the start is floored to a 0.5
+ * multiple, and 0.5 is binary-exact), so FLOOR_PT is always the final rung
+ * tried and every solved bodyPt is a clean 0.5 multiple.
  */
 export function solveGrid(grid: Box, spec: BoardSpec, m: FontMetrics): SolveResult {
-  const startPt = Math.min(20, Math.max(FLOOR_PT, grid.h * 0.7));
+  const startPt = Math.min(20, Math.max(FLOOR_PT, Math.floor(grid.h * 0.7 * 2) / 2));
   for (let pt = startPt; pt >= FLOOR_PT; pt -= 0.5) {
     const layout = tryFit(grid, spec, m, pt);
     if (layout) return layout;
