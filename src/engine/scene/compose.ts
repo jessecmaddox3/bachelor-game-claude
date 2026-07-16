@@ -193,6 +193,9 @@ function composeGrid(spec: BoardSpec, grid: Box, L: GridLayout, m: FontMetrics, 
   }
 }
 
+/** Decorative marks stay clear of the print trim zone (posters get cut). */
+const TRIM_SAFE = 0.125;
+
 function composeExtras(spec: BoardSpec, grid: Box, L: GridLayout, m: FontMetrics, prims: Primitive[]) {
   const rowY = (r: number) => grid.y + L.headerBandH + r * L.rowH;
 
@@ -219,8 +222,10 @@ function composeExtras(spec: BoardSpec, grid: Box, L: GridLayout, m: FontMetrics
       prims.push({ kind: 'line', x1: x, y1, x2: x, y2, color: HIGHLIGHT, widthIn: 0.04 });
       prims.push({ kind: 'line', x1: x, y1, x2: x + 0.1, y2: y1, color: HIGHLIGHT, widthIn: 0.04 });
       prims.push({ kind: 'line', x1: x, y1: y2, x2: x + 0.1, y2, color: HIGHLIGHT, widthIn: 0.04 });
-      if (!leftRail) {
-        const labelBox: Box = { x: x - 0.33, y: y1, w: 0.3, h: y2 - y1 };
+      const labelRight = x - 0.03;
+      const labelLeft = Math.max(TRIM_SAFE, x - 0.33);
+      if (!leftRail && labelRight - labelLeft >= 0.1) {
+        const labelBox: Box = { x: labelLeft, y: y1, w: labelRight - labelLeft, h: y2 - y1 };
         const pt = fitSizePt('BONUS', labelBox.h, labelBox.w, 'bodyBold', m, 14, 6);
         if (pt !== null) {
           prims.push({ kind: 'text', box: labelBox, text: 'BONUS', fontId: 'bodyBold', sizePt: pt, color: HIGHLIGHT, align: 'center', rotate: -90 });
@@ -238,24 +243,34 @@ function composeExtras(spec: BoardSpec, grid: Box, L: GridLayout, m: FontMetrics
 
 function composeRules(spec: BoardSpec, box: Box, m: FontMetrics, prims: Primitive[]) {
   const text = spec.rules.map((r, i) => `${i + 1}. ${r}`).join('    ');
+  const render = (lines: string[], pt: number) => {
+    const lineH = m.lineHeightIn('body', pt);
+    let y = box.y + 0.1;
+    for (const line of lines) {
+      prims.push({
+        kind: 'text',
+        box: { x: box.x + 0.2, y, w: box.w - 0.4, h: lineH },
+        text: line,
+        fontId: 'body',
+        sizePt: pt,
+        color: INK,
+        align: 'left',
+      });
+      y += lineH;
+    }
+  };
   for (let pt = 14; pt >= 7; pt -= 0.5) {
     const { lines } = wrapToWidth(text, box.w - 0.4, 'body', pt, m, 99);
-    const lineH = m.lineHeightIn('body', pt);
-    if (lines.length * lineH <= box.h - 0.2) {
-      let y = box.y + 0.1;
-      for (const line of lines) {
-        prims.push({
-          kind: 'text',
-          box: { x: box.x + 0.2, y, w: box.w - 0.4, h: lineH },
-          text: line,
-          fontId: 'body',
-          sizePt: pt,
-          color: INK,
-          align: 'left',
-        });
-        y += lineH;
-      }
+    if (lines.length * m.lineHeightIn('body', pt) <= box.h - 0.2) {
+      render(lines, pt);
       return;
     }
   }
+  // Floor fallback (unreachable within schema caps, kept as latent safety):
+  // bound the line count and let wrapToWidth ellipsize the tail, guaranteeing
+  // fit on both axes rather than silently dropping the strip.
+  const lineH = m.lineHeightIn('body', 7);
+  const maxLines = Math.max(1, Math.floor((box.h - 0.2) / lineH));
+  const { lines } = wrapToWidth(text, box.w - 0.4, 'body', 7, m, maxLines);
+  render(lines, 7);
 }
