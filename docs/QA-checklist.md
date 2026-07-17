@@ -15,7 +15,7 @@ Tip for a clean start: the wizard saves your draft under the localStorage key `b
 - [ ] The app loads with a three-tab header (1. Setup, 2. Activities, 3. Design), a form panel on the left, and a poster preview on the right.
 - [ ] Within a second or two the preview renders the full poster: teal "THE BACHELOR WEEKEND OF / YOUR GUY HERE" masthead, player-column grid, activities list, corner boxes.
 - [ ] The masthead uses the heavy display font (Archivo Black) and the grid uses Lato. If text looks like Times/Helvetica fallback, the fonts did not load.
-- [ ] No red errors in the console. (A single 404 for `favicon.ico` is a known cosmetic gap and can be ignored.)
+- [ ] No red errors in the console.
 
 ## 2. Live preview responsiveness
 
@@ -76,14 +76,13 @@ Tip for a clean start: the wizard saves your draft under the localStorage key `b
 ## 10. Persistence and reset
 
 - [ ] Make a few distinctive edits (honoree, a renamed activity, a theme), reload the page: everything is restored, including the tab you were on.
-- [ ] Reset to factory defaults: run `localStorage.removeItem('bachelor-board-v2')` in the DevTools console and reload; the app returns to the starter draft. (There is no in-UI reset button yet; the store's `reset()` action exists but is not wired to a control.)
+- [ ] Reset to factory defaults: click "Start over" in the header and confirm the dialog; the app returns to the starter draft on the Setup tab. Cancel the dialog once first and confirm nothing is lost. (Fallback: run `localStorage.removeItem('bachelor-board-v2')` in the DevTools console and reload.)
 
 ## Known limitations
 
 - **Safari PNG export may fail.** Safari's canvas limits are lower and less detectable; the app probes first and shows a clear error telling you to use the PDF export instead. That error is the expected behavior, not a bug.
 - **First load fetches ~1.4MB of fonts** (Archivo Black plus two Lato weights). On a slow connection the preview text can render in a fallback font for a moment; it settles once the fonts finish loading.
 - **The PDF button lazy-loads a ~1.1MB chunk on first click** (pdf-lib and friends). The first PDF export per session is slower than the rest; later clicks are instant.
-- `favicon.ico` 404s in the console on load; cosmetic only.
 
 ## Accessibility polish backlog
 

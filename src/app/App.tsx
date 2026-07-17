@@ -9,7 +9,7 @@ import type { FontMetrics, FontBuffers } from '../engine';
 const STEPS = ['Setup', 'Activities', 'Design'] as const;
 
 export function App({ metrics, buffers }: { metrics: FontMetrics; buffers: FontBuffers | null }) {
-  const { draft, step, setStep } = useWizardStore();
+  const { draft, step, setStep, reset } = useWizardStore();
   const board = useBoard(draft, metrics);
 
   return (
@@ -23,6 +23,9 @@ export function App({ metrics, buffers }: { metrics: FontMetrics; buffers: FontB
             </button>
           ))}
         </nav>
+        <button className="ghost" onClick={() => window.confirm('Start over? This clears the current board.') && reset()}>
+          Start over
+        </button>
       </header>
       <main>
         <section className="panel">
