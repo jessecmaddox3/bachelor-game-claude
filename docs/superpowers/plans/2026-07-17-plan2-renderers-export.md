@@ -13,6 +13,7 @@
 ## Spec deviations (controller-approved)
 
 1. **PNG strip-stitching is replaced by auto-scaled DPI.** The spec said "render in horizontal strips and stitch" for oversized posters, but a stitched 48x72 @ 300 DPI canvas (14,400 x 21,600 = 311M px) exceeds the browser canvas area limit (~268M px) — there is nowhere legal to stitch strips client-side. Instead, `planPngScale` picks the highest integer DPI whose pixel dims and area fit browser limits (300 DPI for 18x24/24x36/36x48; ~200 DPI for 48x72) and reports `reduced: true` so the UI can tell the user. The PDF is the true-resolution print artifact at every size.
+3. **SVG snapshot tests replaced by structural assertions + visual smoke.** The spec's testing section called for SVG output snapshots; this plan substitutes structural assertions (element counts, textLength pinning, dimensions) plus resvg rasterization with human-verified sample artifacts — less brittle than byte snapshots and verifies actual visual output rather than markup stability.
 2. **FontMetrics switches to kerning-off measurement.** pdf-lib draws text with plain advance widths (no kerning), so measuring WITH kerning would make the PDF render slightly wider than measured. Kerning-off makes measurement exactly equal PDF output; the SVG preview is forced to the measured width via `textLength` (a few-thousandths-of-an-inch spacing correction, not a squish). Widths become additive, slightly larger (safer) than before.
 
 ## Conventions
