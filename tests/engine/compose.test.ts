@@ -1,7 +1,4 @@
 import { describe, it, expect } from 'vitest';
-import { composeScene } from '../../src/engine/scene/compose';
-import { partitionRegions } from '../../src/engine/layout/regions';
-import { solveGrid } from '../../src/engine/layout/gridSolver';
 import { makeSpec } from '../helpers/fixtures';
 import { testMetrics } from '../helpers/loadFonts';
 import { overflowingRuns, outOfPage } from '../helpers/invariants';
@@ -11,12 +8,14 @@ import { buildBoard } from '../../src/engine/buildBoard';
 
 const m = testMetrics();
 
+// Routed through buildBoard (not composeScene directly) so display-string
+// preprocessing (allCaps) is part of what these tests exercise: the solver
+// must measure exactly what compose renders.
 export function build(over: Record<string, unknown> = {}) {
   const spec = makeSpec(over);
-  const regions = partitionRegions(spec);
-  const solved = solveGrid(regions.grid, spec, m);
-  if (!solved.feasible) throw new Error('fixture must be feasible');
-  return { spec, scene: composeScene(spec, regions, solved, m) };
+  const result = buildBoard(spec, m);
+  if (!result.ok) throw new Error('fixture must be feasible');
+  return { spec, scene: result.scene };
 }
 
 const texts = (s: ReturnType<typeof build>['scene']) =>
@@ -163,5 +162,73 @@ describe('buildBoard', () => {
 
   it('rejects invalid input with a Zod error', () => {
     expect(() => buildBoard({ nonsense: true }, m)).toThrow();
+  });
+});
+
+describe('composeScene: steven theme elements', () => {
+  const stevenTheme = {
+    titleColor: '#45C0C8',
+    accentColor: '#3A6BC7',
+    activityColor: '#3A6BC7',
+    pointsColTint: '#D8E9F5',
+    maxPointsColTint: '#E8E8E8',
+    cornerLabel: 'THE GAME',
+    cornerSubLabel: 'ACTIVITIES',
+    allCaps: true,
+  };
+
+  it('renders corner label and sublabel in the accent color', () => {
+    const { scene } = build({ theme: stevenTheme });
+    const corner = texts(scene).find((t) => t.text === 'THE GAME');
+    expect(corner).toBeDefined();
+    expect(corner!.color).toBe('#3A6BC7');
+    expect(texts(scene).map((t) => t.text)).toContain('ACTIVITIES');
+    expect(overflowingRuns(scene, m)).toEqual([]);
+  });
+
+  it('uppercases activity names when allCaps is on, measured as displayed', () => {
+    const { scene } = build({ theme: stevenTheme });
+    const strings = texts(scene).map((t) => t.text);
+    expect(strings).toContain('CHALLENGE NUMBER 2');
+    expect(strings).not.toContain('Challenge number 2');
+    expect(overflowingRuns(scene, m)).toEqual([]);
+  });
+
+  it('tints the scoring columns and colors title/subtitle', () => {
+    const { scene } = build({
+      theme: stevenTheme,
+      activities: Array.from({ length: 20 }, (_, i) => ({ name: `Task ${i}`, points: 1, maxPoints: 3 })),
+    });
+    const tints = scene.primitives.filter((p) => p.kind === 'rect' && p.fill === '#D8E9F5');
+    expect(tints.length).toBeGreaterThanOrEqual(1);
+    const grayTints = scene.primitives.filter((p) => p.kind === 'rect' && p.fill === '#E8E8E8');
+    expect(grayTints.length).toBeGreaterThanOrEqual(1);
+    const title = texts(scene).find((t) => t.text === 'BACHELOR');
+    expect(title!.color).toBe('#45C0C8');
+  });
+
+  it('renders the points subheader and the max points column values', () => {
+    const { scene } = build({
+      activities: Array.from({ length: 20 }, (_, i) => ({
+        name: `Task ${i}`,
+        points: 1,
+        ...(i === 0 ? { maxPoints: 5 } : {}),
+      })),
+    });
+    const strings = texts(scene).map((t) => t.text);
+    expect(strings).toContain('MAX POINTS');
+    expect(strings.filter((s) => s === '5').length).toBeGreaterThanOrEqual(1);
+    expect(overflowingRuns(scene, m)).toEqual([]);
+    expect(outOfPage(scene)).toEqual([]);
+  });
+
+  it('renders range labels in the points column', () => {
+    const { scene } = build({
+      activities: [
+        ...Array.from({ length: 5 }, (_, i) => ({ name: `Task ${i}`, points: 1 })),
+        { name: 'Beer pong tournament', points: { min: 1, max: 6 } },
+      ],
+    });
+    expect(texts(scene).map((t) => t.text)).toContain('1 to 6');
   });
 });
