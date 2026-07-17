@@ -39,6 +39,13 @@ describe('renderPdf', () => {
     const bytes = await pdfFor();
     expect(bytes.byteLength).toBeGreaterThan(20_000);
     expect(bytes.byteLength).toBeLessThan(5_000_000);
+    // Fixture-independent proof that all three fonts are genuinely embedded
+    // (the byte floor alone is coupled to fixture string lengths). renderPdf's
+    // save() packs the FontDescriptor dicts into compressed object streams, so
+    // re-serialize without them to make the /FontFile2 keys greppable.
+    const flat = await (await PDFDocument.load(bytes)).save({ useObjectStreams: false });
+    const raw = Buffer.from(flat).toString('latin1');
+    expect((raw.match(/\/FontFile2/g) ?? []).length).toBe(3);
   });
 
   it('handles the largest poster size', async () => {
