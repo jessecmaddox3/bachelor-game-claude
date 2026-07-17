@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { Resvg } from '@resvg/resvg-js';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
 import { PDFDocument } from 'pdf-lib';
@@ -9,7 +9,6 @@ import { renderPdf } from '../../src/engine/render/pdf';
 import { buildBoard } from '../../src/engine/buildBoard';
 import { makeSpec, playerNames } from '../helpers/fixtures';
 import { testMetrics } from '../helpers/loadFonts';
-import { readFileSync } from 'node:fs';
 
 const m = testMetrics();
 const fontsDir = fileURLToPath(new URL('../../src/assets/fonts', import.meta.url));
