@@ -3,7 +3,11 @@ import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
 import { FontMetrics } from '../../src/engine/fonts/metrics';
 
-const dir = fileURLToPath(new URL('../../src/assets/fonts', import.meta.url));
+// Under the jsdom test environment import.meta.url is an http:// URL, so fall
+// back to the project root (vitest's cwd) instead of fileURLToPath.
+const metaUrl = new URL('../../src/assets/fonts', import.meta.url);
+const dir =
+  metaUrl.protocol === 'file:' ? fileURLToPath(metaUrl) : resolve(process.cwd(), 'src/assets/fonts');
 
 function ab(name: string): ArrayBuffer {
   const b = readFileSync(resolve(dir, name));
