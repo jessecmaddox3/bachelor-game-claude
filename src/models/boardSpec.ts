@@ -16,7 +16,7 @@ export const pointsValueSchema = z.union([
   z.literal('TBD'),
   z
     .object({ min: z.number().int().min(-99).max(999), max: z.number().int().min(-99).max(999) })
-    .refine((r) => r.max > r.min, { message: 'max must exceed min' }),
+    .refine((r) => r.max > r.min, { message: 'max must exceed min', path: ['max'] }),
 ]);
 export type PointsValue = z.infer<typeof pointsValueSchema>;
 
@@ -35,7 +35,9 @@ export const boardSpecSchema = z.object({
     .array(
       z.object({
         name: z.string().min(1).max(90),
+        /** Single value (negatives allowed, e.g. a -3 penalty activity), 'TBD', or a range. */
         points: pointsValueSchema,
+        /** Cumulative cap for repeatable activities (the MAX POINTS column); blank means the activity can only be done once. */
         maxPoints: z.number().int().min(1).max(99).optional(),
         bonus: z.boolean().default(false),
       }),
@@ -60,9 +62,13 @@ export const boardSpecSchema = z.object({
       highlightPointsHeader: z.boolean().default(true),
       bonusBracket: z.boolean().default(true),
       headerDivider: z.boolean().default(true),
+      /** Title and honoree masthead lines. */
       titleColor: z.string().default('#141414'),
+      /** Subtitle, divider, corner label, TOTAL, rules headings, corner boxes. */
       accentColor: z.string().default('#141414'),
+      /** Activity names, player names, corner sublabel. */
       activityColor: z.string().default('#141414'),
+      /** Points-header highlight box and bonus bracket. */
       highlightColor: z.string().default('#B3261E'),
       /** '' disables the tint. */
       pointsColTint: z.string().default(''),
