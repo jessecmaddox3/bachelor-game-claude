@@ -242,7 +242,7 @@ function composeExtras(spec: BoardSpec, grid: Box, L: GridLayout, m: FontMetrics
 }
 
 function composeRules(spec: BoardSpec, box: Box, m: FontMetrics, prims: Primitive[]) {
-  const text = spec.rules.map((r, i) => `${i + 1}. ${r}`).join('    ');
+  const text = spec.rules.map((r, i) => `${i + 1}. ${r.text}`).join('    ');
   const render = (lines: string[], pt: number) => {
     const lineH = m.lineHeightIn('body', pt);
     let y = box.y + 0.1;

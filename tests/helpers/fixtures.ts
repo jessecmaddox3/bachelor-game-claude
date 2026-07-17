@@ -17,7 +17,10 @@ export function makeSpec(over: Record<string, unknown> = {}): BoardSpec {
       points: (i % 5) + 1,
     })),
     posterSize: '24x36',
-    rules: ['Score your own points honestly.', 'The honoree can veto anything once.'],
+    rules: [
+      { text: 'Score your own points honestly.' },
+      { text: 'The honoree can veto anything once.' },
+    ],
     ...over,
   });
 }
