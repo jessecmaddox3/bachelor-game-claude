@@ -9,7 +9,8 @@ export type Draft = {
   honoree: string;
   subtitle: string;
   players: string[];
-  activities: Array<{ name: string; points: PointsValue; maxPoints?: number; bonus: boolean }>;
+  /** `uid` is editor-only row identity (React keys); zod strips it from BoardSpec output. */
+  activities: Array<{ uid: string; name: string; points: PointsValue; maxPoints?: number; bonus: boolean }>;
   posterSize: BoardSpec['posterSize'];
   rules: Array<{ heading?: string; text: string }>;
   footnote: string;
@@ -27,6 +28,7 @@ export function defaultDraft(): Draft {
     subtitle: '',
     players: ['Player 1', 'Player 2', 'Player 3', 'Player 4', 'Player 5', 'Player 6', 'Player 7', 'Player 8'],
     activities: ACTIVITY_LIBRARY.slice(0, 20).map((a) => ({
+      uid: crypto.randomUUID(),
       name: a.name,
       points: a.points,
       ...(a.maxPoints !== undefined ? { maxPoints: a.maxPoints } : {}),

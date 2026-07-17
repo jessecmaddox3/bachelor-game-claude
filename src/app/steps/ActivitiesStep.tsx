@@ -24,7 +24,7 @@ export function ActivitiesStep() {
         </thead>
         <tbody>
           {draft.activities.map((a, i) => (
-            <tr key={`${a.name}-${i}`}>
+            <tr key={a.uid}>
               <td><input value={a.name} maxLength={90} onChange={(e) => setActivity(i, { name: e.target.value })} /></td>
               <td>
                 <input
@@ -62,7 +62,7 @@ export function ActivitiesStep() {
       </table>
       <button
         className="ghost"
-        onClick={() => patch({ activities: [...draft.activities, { name: 'New activity', points: 1, bonus: false }] })}
+        onClick={() => patch({ activities: [...draft.activities, { uid: crypto.randomUUID(), name: 'New activity', points: 1, bonus: false }] })}
       >
         + Custom activity
       </button>
@@ -106,7 +106,7 @@ export function ActivitiesStep() {
                   className="ghost"
                   aria-label={`Add ${a.name}`}
                   disabled={draft.activities.length >= 80}
-                  onClick={() => patch({ activities: [...draft.activities, { name: a.name, points: a.points, ...(a.maxPoints !== undefined ? { maxPoints: a.maxPoints } : {}), bonus: false }] })}
+                  onClick={() => patch({ activities: [...draft.activities, { uid: crypto.randomUUID(), name: a.name, points: a.points, ...(a.maxPoints !== undefined ? { maxPoints: a.maxPoints } : {}), bonus: false }] })}
                 >
                   Add
                 </button>

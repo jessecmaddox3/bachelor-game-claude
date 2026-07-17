@@ -26,7 +26,10 @@ export const useWizardStore = create<WizardState>()(
       // fields are backfilled from defaults instead of shipping undefined.
       merge: (persisted, current) => {
         const p = persisted as Partial<WizardState> | undefined;
-        return { ...current, ...p, draft: { ...current.draft, ...(p?.draft ?? {}) } };
+        const draft = { ...current.draft, ...(p?.draft ?? {}) };
+        // Drafts persisted before activities carried a uid need one backfilled.
+        draft.activities = draft.activities.map((a) => ({ ...a, uid: a.uid ?? crypto.randomUUID() }));
+        return { ...current, ...p, draft };
       },
     },
   ),

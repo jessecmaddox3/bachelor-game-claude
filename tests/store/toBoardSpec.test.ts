@@ -27,7 +27,11 @@ describe('toBoardSpec', () => {
   it('accepts a complete draft', () => {
     const r = toBoardSpec(defaultDraft());
     expect(r.ok).toBe(true);
-    if (r.ok) expect(r.spec.players.length).toBeGreaterThanOrEqual(8);
+    if (r.ok) {
+      expect(r.spec.players.length).toBeGreaterThanOrEqual(8);
+      // Editor-only row identity must not leak into the BoardSpec (zod strips it).
+      for (const a of r.spec.activities) expect('uid' in a).toBe(false);
+    }
   });
 
   it('reports friendly field errors, not raw zod unions', () => {

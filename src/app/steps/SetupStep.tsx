@@ -39,8 +39,11 @@ export function SetupStep() {
 
       <h2>Players ({draft.players.length}/35)</h2>
       <ul className="roster">
+        {/* Index-only keys: these inputs are controlled, so an index key keeps
+            focus while typing (a name-based key would change every keystroke
+            and remount the row) and never goes stale on removal. */}
         {draft.players.map((p, i) => (
-          <li key={`${p}-${i}`} className="row">
+          <li key={i} className="row">
             <input
               value={p}
               maxLength={24}
