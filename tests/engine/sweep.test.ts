@@ -85,4 +85,50 @@ describe('invariant sweep across the full envelope', () => {
     );
     expect(rotated).toHaveLength(1);
   });
+
+  it('full fidelity features pass invariants at density', () => {
+    const result = buildBoard(
+      makeSpec({
+        posterSize: '24x36',
+        players: playerNames(24),
+        activities: Array.from({ length: 40 }, (_, i) => ({
+          name: activityName(i),
+          points: i % 5 === 0 ? ({ min: -5, max: 5 } as const) : (i % 9) + 1,
+          ...(i % 6 === 0 ? { maxPoints: (i % 4) + 1 } : {}),
+          bonus: i % 11 === 0,
+        })),
+        writeInRows: 3,
+        honoreeBonusRow: true,
+        cornerBoxes: ['GRAND CHAMPION', 'THE LOSER OF IT ALL', 'MVP'],
+        rules: Array.from({ length: 8 }, (_, i) => ({ heading: `RULE ${i}`, text: `Rule text number ${i} explaining the rule in a sentence.` })),
+        footnote: 'Footnote line.',
+        theme: { allCaps: true, pointsColTint: '#D8E9F5', maxPointsColTint: '#E8E8E8', cornerLabel: 'THE GAME', cornerSubLabel: 'ACTIVITIES' },
+      }),
+      m,
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(overflowingRuns(result.scene, m)).toEqual([]);
+    expect(outOfPage(result.scene)).toEqual([]);
+  });
+
+  it('fidelity features on the smallest poster fit or refuse honestly', () => {
+    const result = buildBoard(
+      makeSpec({
+        posterSize: '18x24',
+        players: playerNames(12),
+        activities: Array.from({ length: 25 }, (_, i) => ({ name: `Task ${i}`, points: 1, maxPoints: 2 })),
+        writeInRows: 2,
+        honoreeBonusRow: true,
+        theme: { allCaps: true },
+      }),
+      m,
+    );
+    if (result.ok) {
+      expect(overflowingRuns(result.scene, m)).toEqual([]);
+      expect(outOfPage(result.scene)).toEqual([]);
+    } else {
+      expect(result.reason.length).toBeGreaterThan(10);
+    }
+  });
 });
