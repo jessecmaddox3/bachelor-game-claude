@@ -1,12 +1,11 @@
 import { createRoot } from 'react-dom/client';
+import { App } from './app/App';
+import { loadAppFonts } from './app/fonts';
+import './index.css';
 
-function App() {
-  return (
-    <div style={{ padding: 32, fontFamily: 'sans-serif' }}>
-      <h1>Bachelor Game Board v5</h1>
-      <p>Engine rebuild in progress. UI arrives in Plan 3.</p>
-    </div>
-  );
-}
+const root = createRoot(document.getElementById('root')!);
+root.render(<div className="boot">Loading fonts…</div>);
 
-createRoot(document.getElementById('root')!).render(<App />);
+loadAppFonts()
+  .then(({ metrics, buffers }) => root.render(<App metrics={metrics} buffers={buffers} />))
+  .catch((err) => root.render(<div className="boot">Failed to load fonts: {String(err)}</div>));
