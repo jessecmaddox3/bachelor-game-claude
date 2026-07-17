@@ -1,4 +1,5 @@
 import type { BoardSpec } from '../../models/boardSpec';
+import { pointsLabel } from '../../models/boardSpec';
 import type { Box } from '../geometry';
 import type { FontMetrics } from '../fonts/metrics';
 import { wrapToWidth, hardEllipsize } from './wrap';
@@ -12,6 +13,15 @@ export const CELL_PAD = 0.08;
 /** Rotated header text for the points column (single source of truth). */
 export const POINTS_HEADER = 'POSSIBLE POINTS';
 
+/** Rotated header text for the max-points column (single source of truth). */
+export const MAX_POINTS_HEADER = 'MAX POINTS';
+
+/** Rotated subheader under the points header. */
+export const POINTS_SUBHEADER = '(PER ACCOMPLISHMENT)';
+
+/** Rotated subheader under the max-points header. */
+export const MAX_POINTS_SUBHEADER = '(IF BLANK, CAN ONLY BE DONE ONCE)';
+
 /** Totals-row label in the task column (single source of truth). */
 export const TOTALS_LABEL = 'TOTAL';
 
@@ -22,7 +32,11 @@ export interface GridLayout {
   rowH: number;
   taskColW: number;
   pointsColW: number;
+  /** Width of the MAX POINTS column; 0 when no activity carries maxPoints (column absent). */
+  maxPointsColW: number;
   playerColW: number;
+  /** Total scored rows drawn: activities + writeInRows + honoree bonus row (if any). */
+  displayRows: number;
   /** wrapped (and possibly ellipsized) label lines, per activity */
   taskLines: string[][];
   /** player names, possibly ellipsized to fit the header band */
@@ -70,7 +84,12 @@ function tryFit(grid: Box, spec: BoardSpec, m: FontMetrics, pt: number): GridLay
   const longestName = Math.max(...spec.players.map((p) => m.widthIn(p, 'bodyBold', pt)));
   // Band minimum: always tall enough for the rotated points header at up to 10pt,
   // so uniformly short player names can never squeeze it out of the header band.
-  const ppNeed = m.widthIn(POINTS_HEADER, 'bodyBold', Math.min(pt, 10));
+  // When the max-points column is present, its rotated header needs the same guarantee.
+  const hasMax = spec.activities.some((a) => a.maxPoints !== undefined);
+  const ppNeed = Math.max(
+    m.widthIn(POINTS_HEADER, 'bodyBold', Math.min(pt, 10)),
+    hasMax ? m.widthIn(MAX_POINTS_HEADER, 'bodyBold', Math.min(pt, 10)) : 0,
+  );
   let headerBandH = Math.max(longestName, ppNeed) + 2 * CELL_PAD;
   let playerNames = [...spec.players];
   if (headerBandH > bandCap) {
@@ -82,11 +101,27 @@ function tryFit(grid: Box, spec: BoardSpec, m: FontMetrics, pt: number): GridLay
     });
   }
 
-  // Points column sized to its widest value ("999" or "TBD").
+  // Points column sized to its widest display label ("999", "TBD", or "1 to 6");
+  // the honoree bonus row contributes its synthetic "-5 to 5" label.
   const pointsColW = Math.max(
     MIN_COL_W,
-    Math.max(...spec.activities.map((a) => m.widthIn(String(a.points), 'bodyBold', pt))) + 2 * CELL_PAD,
+    Math.max(
+      spec.honoreeBonusRow ? m.widthIn('-5 to 5', 'bodyBold', pt) : 0,
+      ...spec.activities.map((a) => m.widthIn(pointsLabel(a.points), 'bodyBold', pt)),
+    ) + 2 * CELL_PAD,
   );
+
+  // Max-points column only exists when some activity carries a maxPoints cap.
+  const maxPointsColW = hasMax
+    ? Math.max(
+        MIN_COL_W,
+        Math.max(
+          ...spec.activities
+            .filter((a) => a.maxPoints !== undefined)
+            .map((a) => m.widthIn(String(a.maxPoints), 'bodyBold', pt)),
+        ) + 2 * CELL_PAD,
+      )
+    : 0;
 
   // Task column: natural measured width, capped at 34% of the grid; wrap to 2 lines past the cap.
   // The column must also host the bold TOTALS_LABEL. The inner text budget is computed
@@ -94,7 +129,11 @@ function tryFit(grid: Box, spec: BoardSpec, m: FontMetrics, pt: number): GridLay
   // fits its wrap budget by exact float equality (no +pad/-pad round trip).
   const capInner = grid.w * 0.34 - 2 * CELL_PAD;
   const totalNeed = m.widthIn(TOTALS_LABEL, 'bodyBold', pt);
-  const naturalInner = Math.max(totalNeed, ...spec.activities.map((a) => m.widthIn(a.name, 'body', pt)));
+  // The honoree bonus row's bold label must also fit the column (mirrors the TOTAL fix).
+  const bonusNeed = spec.honoreeBonusRow
+    ? m.widthIn(`**BONUS POINTS GRANTED BY ${spec.honoree.toUpperCase()}**`, 'bodyBold', pt)
+    : 0;
+  const naturalInner = Math.max(totalNeed, bonusNeed, ...spec.activities.map((a) => m.widthIn(a.name, 'body', pt)));
   const taskInner = Math.min(naturalInner, capInner);
   const taskColW = taskInner + 2 * CELL_PAD;
   let wrappedTasks = 0;
@@ -106,12 +145,15 @@ function tryFit(grid: Box, spec: BoardSpec, m: FontMetrics, pt: number): GridLay
   });
 
   // Player columns split the remainder; rotated names also need horizontal room for one line height.
-  const playerColW = (grid.w - taskColW - pointsColW) / spec.players.length;
+  const playerColW = (grid.w - taskColW - pointsColW - maxPointsColW) / spec.players.length;
   if (playerColW < Math.max(MIN_COL_W, m.lineHeightIn('bodyBold', pt) + 2 * CELL_PAD)) return null;
 
-  // Rows: activities + one totals row share what the header band leaves.
+  // Rows: activities + write-ins + honoree bonus + one totals row share what the
+  // header band leaves. The floor check considers only activity task lines
+  // (write-in/bonus rows are single-line by construction).
+  const displayRows = spec.activities.length + spec.writeInRows + (spec.honoreeBonusRow ? 1 : 0);
   const maxLines = Math.max(...taskLines.map((l) => l.length));
-  const rowH = (grid.h - headerBandH) / (spec.activities.length + 1);
+  const rowH = (grid.h - headerBandH) / (displayRows + 1);
   if (rowH < Math.max(MIN_ROW_H, maxLines * lineH + 2 * CELL_PAD)) return null;
 
   return {
@@ -121,7 +163,9 @@ function tryFit(grid: Box, spec: BoardSpec, m: FontMetrics, pt: number): GridLay
     rowH,
     taskColW,
     pointsColW,
+    maxPointsColW,
     playerColW,
+    displayRows,
     taskLines,
     playerNames,
     degradations: { wrappedTasks, ellipsized },

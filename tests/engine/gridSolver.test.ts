@@ -24,9 +24,9 @@ describe('solveGrid', () => {
   it('geometry adds up: columns fill the grid width, rows fill the height budget', () => {
     const { spec, regions, result } = solve();
     if (!result.feasible) throw new Error('expected feasible');
-    const totalW = result.taskColW + result.pointsColW + result.playerColW * spec.players.length;
+    const totalW = result.taskColW + result.pointsColW + result.maxPointsColW + result.playerColW * spec.players.length;
     expect(totalW).toBeCloseTo(regions.grid.w, 3);
-    const totalH = result.headerBandH + result.rowH * (spec.activities.length + 1);
+    const totalH = result.headerBandH + result.rowH * (result.displayRows + 1);
     expect(totalH).toBeLessThanOrEqual(regions.grid.h + 0.01);
   });
 
@@ -75,5 +75,39 @@ describe('solveGrid', () => {
     const b = solve({ activities: Array.from({ length: 60 }, (_, i) => ({ name: `Task ${i}`, points: 1 })) });
     if (!a.result.feasible || !b.result.feasible) throw new Error('expected both feasible');
     expect(b.result.bodyPt).toBeLessThanOrEqual(a.result.bodyPt);
+  });
+
+  it('reserves a max-points column only when any activity has maxPoints', () => {
+    const base = solve();
+    if (!base.result.feasible) throw new Error('expected feasible');
+    expect(base.result.maxPointsColW).toBe(0);
+
+    const withMax = solve({
+      activities: Array.from({ length: 20 }, (_, i) => ({
+        name: `Task ${i}`,
+        points: 1,
+        ...(i % 4 === 0 ? { maxPoints: 5 } : {}),
+      })),
+    });
+    if (!withMax.result.feasible) throw new Error('expected feasible');
+    expect(withMax.result.maxPointsColW).toBeGreaterThan(0);
+  });
+
+  it('counts write-in and honoree bonus rows in the row budget', () => {
+    const plain = solve();
+    const extra = solve({ writeInRows: 2, honoreeBonusRow: true });
+    if (!plain.result.feasible || !extra.result.feasible) throw new Error('expected feasible');
+    expect(extra.result.displayRows).toBe(plain.result.displayRows + 3);
+    expect(extra.result.rowH).toBeLessThan(plain.result.rowH);
+  });
+
+  it('sizes the points column to range labels', () => {
+    const ranges = solve({
+      activities: Array.from({ length: 10 }, (_, i) => ({ name: `Task ${i}`, points: { min: -5, max: 5 } })),
+    });
+    if (!ranges.result.feasible) throw new Error('expected feasible');
+    expect(
+      m.widthIn('-5 to 5', 'bodyBold', ranges.result.bodyPt),
+    ).toBeLessThanOrEqual(ranges.result.pointsColW - 2 * CELL_PAD + 0.01);
   });
 });
