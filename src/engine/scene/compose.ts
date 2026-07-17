@@ -21,12 +21,54 @@ export function composeScene(spec: BoardSpec, regions: Regions, layout: GridLayo
   prims.push({ kind: 'rect', box: { x: 0, y: 0, w: regions.pageW, h: regions.pageH }, fill: PAGE_BG });
 
   composeHeader(spec, regions, m, prims);
+  if (spec.cornerBoxes.length > 0) composeCornerBoxes(spec, regions, m, prims);
   if (regions.rail) composeRail(regions.rail, m, prims);
   composeGrid(spec, regions.grid, layout, m, prims);
   composeExtras(spec, regions.grid, layout, m, prims);
   if (regions.rules) composeRules(spec, regions.rules, m, prims);
 
   return { widthIn: regions.pageW, heightIn: regions.pageH, primitives: prims };
+}
+
+// Corner champion boxes: write-in score boxes stacked at the header's right
+// edge, each with a right-aligned label beneath it.
+const CORNER_BOX_W = 2.3;
+const CORNER_BOX_H = 0.45;
+const CORNER_LABEL_H = 0.2;
+const CORNER_GAP = 0.15;
+
+function composeCornerBoxes(spec: BoardSpec, regions: Regions, m: FontMetrics, prims: Primitive[]) {
+  const h = regions.header;
+  const n = spec.cornerBoxes.length;
+  // Proportional scale-down when the stack would exceed the header band
+  // (e.g. 3 boxes need 2.4" against a 2.2" floor-height header).
+  const scale = Math.min(1, h.h / (n * (CORNER_BOX_H + CORNER_LABEL_H + CORNER_GAP)));
+  const boxH = CORNER_BOX_H * scale;
+  const labelH = CORNER_LABEL_H * scale;
+  const gap = CORNER_GAP * scale;
+  const x = h.x + h.w - CORNER_BOX_W;
+  spec.cornerBoxes.forEach((label, i) => {
+    const y = h.y + i * (boxH + labelH + gap);
+    prims.push({
+      kind: 'rect',
+      box: { x, y, w: CORNER_BOX_W, h: boxH },
+      stroke: spec.theme.accentColor,
+      strokeWidthIn: 0.02,
+    });
+    const labelBox: Box = { x, y: y + boxH + 0.02, w: CORNER_BOX_W, h: labelH - 0.04 };
+    const pt = fitSizePt(label, labelBox.w, labelBox.h, 'bodyBold', m, 14, 6);
+    if (pt !== null) {
+      prims.push({
+        kind: 'text',
+        box: labelBox,
+        text: label,
+        fontId: 'bodyBold',
+        sizePt: pt,
+        color: spec.theme.accentColor,
+        align: 'right',
+      });
+    }
+  });
 }
 
 /**
@@ -66,10 +108,14 @@ function composeHeader(spec: BoardSpec, regions: Regions, m: FontMetrics, prims:
         [spec.honoree, 0.4, 'display', spec.theme.titleColor],
       ];
 
+  // Corner boxes occupy the header's right edge; keep the title rows clear
+  // of them (they re-fit smaller automatically via fittedLine).
+  const rowW = spec.cornerBoxes.length > 0 ? h.w * 0.9 - CORNER_BOX_W : h.w * 0.9;
+
   let y = h.y;
   let titlePt: number | null = null;
   rows.forEach(([text, frac, fontId, color], i) => {
-    const rowBox: Box = { x: h.x + h.w * 0.05, y, w: h.w * 0.9, h: h.h * frac * 0.9 };
+    const rowBox: Box = { x: h.x + h.w * 0.05, y, w: rowW, h: h.h * frac * 0.9 };
     // Rows are fitted independently, so a width-constrained long title could
     // otherwise land smaller than its caption. Cap the subtitle (last row when
     // present) at 80% of the title's fitted size: the subtitle must never
@@ -101,12 +147,12 @@ function composeGrid(spec: BoardSpec, grid: Box, L: GridLayout, m: FontMetrics, 
   const maxX = pointsX + L.pointsColW;
   const playersX = maxX + L.maxPointsColW;
   const rowY = (r: number) => grid.y + L.headerBandH + r * L.rowH;
-  const gridBottom = rowY(rows + 1); // activities + totals row
+  const gridBottom = rowY(L.displayRows + 1); // activities + write-ins + bonus + totals row
   const lineH = m.lineHeightIn('body', L.bodyPt);
   const { accentColor, activityColor } = spec.theme;
 
   // Alternate-row tint (subtle blue per theme), behind everything else in the grid
-  for (let r = 0; r < rows; r++) {
+  for (let r = 0; r < L.displayRows; r++) {
     if (r % 2 === 1) {
       prims.push({ kind: 'rect', box: { x: grid.x, y: rowY(r), w: grid.w, h: L.rowH }, fill: spec.theme.rowTint });
     }
@@ -239,8 +285,48 @@ function composeGrid(spec: BoardSpec, grid: Box, L: GridLayout, m: FontMetrics, 
     }
   });
 
+  // Write-in rows: blank scoring rows headed only by a small rotated 'TBD'
+  // marker at the left edge of the task cell. Skipped (marker only, the row
+  // itself still exists) when the row is too short for even a 5pt marker.
+  for (let w = 0; w < spec.writeInRows; w++) {
+    const box: Box = {
+      x: grid.x + CELL_PAD / 2,
+      y: rowY(rows + w) + CELL_PAD,
+      w: 0.14,
+      h: L.rowH - 2 * CELL_PAD,
+    };
+    const pt = fitSizePt('TBD', box.h, box.w, 'body', m, 8, 5);
+    if (pt !== null) {
+      prims.push({ kind: 'text', box, text: 'TBD', fontId: 'body', sizePt: pt, color: GRID_LINE, align: 'center', rotate: -90 });
+    }
+  }
+
+  // Honoree bonus row: single-line bold label (the solver guarantees it fits
+  // the task column at bodyPt) with a fixed -5 to 5 range in the points cell.
+  if (spec.honoreeBonusRow) {
+    const r = rows + spec.writeInRows;
+    prims.push({
+      kind: 'text',
+      box: { x: grid.x + CELL_PAD, y: rowY(r) + (L.rowH - lineH) / 2, w: L.taskColW - 2 * CELL_PAD, h: lineH },
+      text: `**BONUS POINTS GRANTED BY ${spec.honoree.toUpperCase()}**`,
+      fontId: 'bodyBold',
+      sizePt: L.bodyPt,
+      color: activityColor,
+      align: 'left',
+    });
+    prims.push({
+      kind: 'text',
+      box: { x: pointsX + CELL_PAD, y: rowY(r) + (L.rowH - lineH) / 2, w: L.pointsColW - 2 * CELL_PAD, h: lineH },
+      text: '-5 to 5',
+      fontId: 'bodyBold',
+      sizePt: L.bodyPt,
+      color: INK,
+      align: 'center',
+    });
+  }
+
   // Totals row: heavy top border + label
-  const totY = rowY(rows);
+  const totY = rowY(L.displayRows);
   prims.push({ kind: 'line', x1: grid.x, y1: totY, x2: grid.x + grid.w, y2: totY, color: INK, widthIn: 0.03 });
   prims.push({
     kind: 'text',
@@ -260,8 +346,8 @@ function composeGrid(spec: BoardSpec, grid: Box, L: GridLayout, m: FontMetrics, 
     prims.push({ kind: 'line', x1: x, y1: grid.y, x2: x, y2: gridBottom, color: GRID_LINE, widthIn: 0.015 });
   }
   const ys = [grid.y, grid.y + L.headerBandH];
-  // Skip rowY(rows): the heavy INK totals border already marks that boundary and must paint last.
-  for (let r = 1; r < rows; r++) ys.push(rowY(r));
+  // Skip rowY(L.displayRows): the heavy INK totals border already marks that boundary and must paint last.
+  for (let r = 1; r < L.displayRows; r++) ys.push(rowY(r));
   ys.push(gridBottom);
   for (const y of ys) {
     prims.push({ kind: 'line', x1: grid.x, y1: y, x2: grid.x + grid.w, y2: y, color: GRID_LINE, widthIn: 0.015 });

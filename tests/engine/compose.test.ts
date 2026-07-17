@@ -232,3 +232,34 @@ describe('composeScene: steven theme elements', () => {
     expect(texts(scene).map((t) => t.text)).toContain('1 to 6');
   });
 });
+
+describe('composeScene: write-in elements', () => {
+  it('renders blank write-in rows with a rotated TBD marker', () => {
+    const { scene } = build({ writeInRows: 2 });
+    const markers = texts(scene).filter((t) => t.text === 'TBD' && t.rotate === -90);
+    expect(markers).toHaveLength(2);
+    expect(overflowingRuns(scene, m)).toEqual([]);
+    expect(outOfPage(scene)).toEqual([]);
+  });
+
+  it('renders the honoree bonus row with its range', () => {
+    const { scene } = build({ honoreeBonusRow: true });
+    const strings = texts(scene).map((t) => t.text);
+    expect(strings).toContain('**BONUS POINTS GRANTED BY STEVEN**');
+    expect(strings).toContain('-5 to 5');
+    expect(overflowingRuns(scene, m)).toEqual([]);
+  });
+
+  it('renders corner boxes with labels in the header', () => {
+    const { scene } = build({ cornerBoxes: ['GRAND CHAMPION', 'THE LOSER OF IT ALL'] });
+    const strings = texts(scene).map((t) => t.text);
+    expect(strings).toContain('GRAND CHAMPION');
+    expect(strings).toContain('THE LOSER OF IT ALL');
+    const boxes = scene.primitives.filter(
+      (p) => p.kind === 'rect' && p.stroke && !p.fill && p.box.h < 1 && p.box.w < 4,
+    );
+    expect(boxes.length).toBeGreaterThanOrEqual(2);
+    expect(overflowingRuns(scene, m)).toEqual([]);
+    expect(outOfPage(scene)).toEqual([]);
+  });
+});
