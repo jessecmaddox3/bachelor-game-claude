@@ -14,9 +14,11 @@ export type FontBuffers = Record<FontId, ArrayBuffer>;
  * The PDF and PNG exports embed these same files, so a measurement here
  * is identical everywhere. All return values are in inches.
  *
- * Kerning: `getAdvanceWidth` applies kerning by default, so widths are NOT
- * strictly additive — `widthIn("AB") ≠ widthIn("A") + widthIn("B")`. Callers
- * must measure whole strings, never sum substring widths.
+ * Measurement is kerning-OFF (plain advance widths). This exactly matches
+ * what pdf-lib draws (it applies no kerning), so the PDF can never render
+ * wider than measured; the SVG preview is forced to the measured width via
+ * textLength. Widths are additive, and slightly wider than kerned
+ * rendering — the safe direction.
  *
  * Cost: construction parses the TTF binaries (~15ms for the three fonts).
  * Construct once and reuse the instance — never per-measurement or
@@ -34,7 +36,7 @@ export class FontMetrics {
   }
 
   widthIn(text: string, fontId: FontId, sizePt: number): number {
-    return this.fonts[fontId].getAdvanceWidth(text, sizePt) / PT_PER_IN;
+    return this.fonts[fontId].getAdvanceWidth(text, sizePt, { kerning: false }) / PT_PER_IN;
   }
 
   // Intentionally omits hhea.lineGap (all three bundled fonts have lineGap 0;
