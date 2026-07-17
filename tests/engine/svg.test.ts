@@ -66,6 +66,21 @@ describe('renderSvg', () => {
     expect(embedded).toContain('data:font/ttf;base64,');
   });
 
+  it('b64 browser fallback matches the Buffer path (embedded fonts identical)', () => {
+    const buffers = fontBuffers();
+    const withBuffer = svgFor({}, { embedFonts: buffers });
+    const B = globalThis.Buffer;
+    // @ts-expect-error simulating a browser environment without Buffer
+    delete globalThis.Buffer;
+    // btoa exists in Node >= 16 on globalThis; the fallback path needs it
+    try {
+      const withoutBuffer = svgFor({}, { embedFonts: buffers });
+      expect(withoutBuffer).toBe(withBuffer);
+    } finally {
+      globalThis.Buffer = B;
+    }
+  });
+
   it('draws rects and lines with stroke widths in inches', () => {
     const svg = svgFor();
     expect(svg).toMatch(/<rect [^>]*fill="#FFFFFF"/); // page background
