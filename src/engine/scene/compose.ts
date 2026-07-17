@@ -409,23 +409,30 @@ function composeRules(spec: BoardSpec, box: Box, m: FontMetrics, prims: Primitiv
   const accent = spec.theme.accentColor;
   const PAD = 0.2;
   const titleH = 0.28;
-  const footH = spec.footnote ? 0.22 : 0;
+  // Footnote strip height derived from its actual metrics: 2 wrapped lines at
+  // 7pt (wrapToWidth's maxLines cap) plus a small pad, so a 2-line footnote
+  // can never overshoot the strip bottom.
+  const fLineH = m.lineHeightIn('body', 7);
+  const footH = spec.footnote ? fLineH * 2 + 0.06 : 0;
   const bodyTop = box.y + PAD / 2 + titleH;
   const bodyH = box.h - PAD - titleH - footH;
   const cols = spec.rules.length > 6 ? 3 : spec.rules.length > 2 ? 2 : 1;
   const colGap = 0.3;
   const colW = (box.w - 2 * PAD - (cols - 1) * colGap) / cols;
 
-  // "GAME RULES:" strip title
-  prims.push({
-    kind: 'text',
-    box: { x: box.x + PAD, y: box.y + PAD / 2, w: box.w - 2 * PAD, h: titleH },
-    text: 'GAME RULES:',
-    fontId: 'bodyBold',
-    sizePt: fitSizePt('GAME RULES:', box.w - 2 * PAD, titleH, 'bodyBold', m, 14, 7) ?? 7,
-    color: accent,
-    align: 'left',
-  });
+  // "GAME RULES:" strip title — only when there are rules to head (a
+  // footnote-only strip must not render an orphaned heading).
+  if (spec.rules.length > 0) {
+    prims.push({
+      kind: 'text',
+      box: { x: box.x + PAD, y: box.y + PAD / 2, w: box.w - 2 * PAD, h: titleH },
+      text: 'GAME RULES:',
+      fontId: 'bodyBold',
+      sizePt: fitSizePt('GAME RULES:', box.w - 2 * PAD, titleH, 'bodyBold', m, 14, 7) ?? 7,
+      color: accent,
+      align: 'left',
+    });
+  }
 
   // Fit pass: find the largest pt (9 -> 5) where every rule block fits its column.
   for (let pt = 9; pt >= 5; pt -= 0.5) {
@@ -466,7 +473,6 @@ function composeRules(spec: BoardSpec, box: Box, m: FontMetrics, prims: Primitiv
   }
 
   if (spec.footnote) {
-    const fLineH = m.lineHeightIn('body', 7);
     const fLines = wrapToWidth(spec.footnote, box.w - 2 * PAD, 'body', 7, m, 2);
     let fy = box.y + box.h - footH;
     for (const line of fLines.lines) {
