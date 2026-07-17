@@ -46,6 +46,13 @@ export async function rasterizePng(svg: string, plan: PngPlan): Promise<Blob> {
     const ctx = canvas.getContext('2d');
     if (!ctx) throw new Error('Canvas 2D context unavailable');
     ctx.drawImage(img, 0, 0, plan.widthPx, plan.heightPx);
+    // Safari exceeds-canvas-limit failures are SILENT (blank canvas, no throw).
+    // Probe a small central region: an all-transparent readback on a poster
+    // that always paints a white background means the canvas was invalidated.
+    const probe = ctx.getImageData(Math.floor(plan.widthPx / 2), Math.floor(plan.heightPx / 2), 4, 4).data;
+    if (!probe.some((channel) => channel !== 0)) {
+      throw new Error('PNG rasterization failed: the canvas exceeded this browser\'s size limits. Try a smaller poster size, or use the PDF export (unlimited).');
+    }
     return await new Promise<Blob>((resolve, reject) => {
       canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('PNG encoding failed'))), 'image/png');
     });

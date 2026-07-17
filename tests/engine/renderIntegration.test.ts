@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { buildBoard, renderSvg, renderPdf, planPngScale } from '../../src/engine';
+import { buildBoard, renderSvg, planPngScale } from '../../src/engine';
+import { renderPdf } from '../../src/engine/render/pdf';
 import { makeSpec, playerNames } from '../helpers/fixtures';
 import { testMetrics } from '../helpers/loadFonts';
 
