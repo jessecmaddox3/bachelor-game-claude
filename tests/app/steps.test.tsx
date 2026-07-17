@@ -4,7 +4,10 @@ import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { SetupStep } from '../../src/app/steps/SetupStep';
 import { ActivitiesStep } from '../../src/app/steps/ActivitiesStep';
+import { DesignStep } from '../../src/app/steps/DesignStep';
 import { useWizardStore } from '../../src/store/wizardStore';
+import { THEME_PRESETS } from '../../src/content/themes';
+import { testMetrics } from '../helpers/loadFonts';
 
 beforeEach(() => useWizardStore.getState().reset());
 // vitest runs without globals:true, so RTL's auto-cleanup never registers;
@@ -85,5 +88,25 @@ describe('stable row identity', () => {
     const remaining = screen.getAllByTitle(/a number, a range/i) as HTMLInputElement[];
     expect(remaining).toHaveLength(1);
     expect(remaining[0]!.value).toBe('42');
+  });
+});
+
+describe('DesignStep', () => {
+  const props = { board: { status: 'loading' } as const, metrics: testMetrics(), buffers: null };
+
+  it('offers clear buttons only on the two clearable tint fields', () => {
+    render(<DesignStep {...props} />);
+    // '' is only a valid theme value for pointsColTint/maxPointsColTint;
+    // clearing any other color field would crash the pdf renderer.
+    expect(screen.getAllByRole('button', { name: /^clear$/i })).toHaveLength(2);
+  });
+
+  it('replaces (not merges) the theme when a preset chip is clicked', async () => {
+    useWizardStore.getState().patch({ theme: structuredClone(THEME_PRESETS[0]!.theme) });
+    render(<DesignStep {...props} />);
+    await userEvent.click(screen.getByRole('button', { name: 'Ink' }));
+    // Ink is `theme: {}` — a merge would leave Classic Teal intact; a replace
+    // clears titleColor so the zod default applies downstream.
+    expect(useWizardStore.getState().draft.theme.titleColor).toBeUndefined();
   });
 });

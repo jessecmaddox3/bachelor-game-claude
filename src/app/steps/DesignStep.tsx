@@ -8,14 +8,16 @@ import type { BoardState } from '../useBoard';
 
 const HEX = /^#[0-9a-fA-F]{6}$/;
 
-const COLOR_FIELDS: Array<{ key: 'titleColor' | 'accentColor' | 'activityColor' | 'highlightColor' | 'rowTint' | 'pointsColTint' | 'maxPointsColTint'; label: string }> = [
-  { key: 'titleColor', label: 'Title' },
-  { key: 'accentColor', label: 'Accents' },
-  { key: 'activityColor', label: 'Activities' },
-  { key: 'highlightColor', label: 'Highlights' },
-  { key: 'rowTint', label: 'Row tint' },
-  { key: 'pointsColTint', label: 'Points column tint' },
-  { key: 'maxPointsColTint', label: 'Max points column tint' },
+// `clearable` marks the fields where '' is a valid value (tint disabled); the
+// other colors are required, so clearing them would crash the renderers.
+const COLOR_FIELDS: Array<{ key: 'titleColor' | 'accentColor' | 'activityColor' | 'highlightColor' | 'rowTint' | 'pointsColTint' | 'maxPointsColTint'; label: string; clearable: boolean }> = [
+  { key: 'titleColor', label: 'Title', clearable: false },
+  { key: 'accentColor', label: 'Accents', clearable: false },
+  { key: 'activityColor', label: 'Activities', clearable: false },
+  { key: 'highlightColor', label: 'Highlights', clearable: false },
+  { key: 'rowTint', label: 'Row tint', clearable: false },
+  { key: 'pointsColTint', label: 'Points column tint', clearable: true },
+  { key: 'maxPointsColTint', label: 'Max points column tint', clearable: true },
 ];
 
 export function DesignStep({ board, metrics, buffers }: { board: BoardState; metrics: FontMetrics; buffers: FontBuffers | null }) {
@@ -27,9 +29,15 @@ export function DesignStep({ board, metrics, buffers }: { board: BoardState; met
   const doExport = async (kind: 'pdf' | 'png') => {
     if (!buffers) return;
     const validated = toBoardSpec(draft);
-    if (!validated.ok) return;
+    if (!validated.ok) {
+      setNote('Fix the issues shown in the preview panel first.');
+      return;
+    }
     const built = buildBoard(validated.spec, metrics);
-    if (!built.ok) return;
+    if (!built.ok) {
+      setNote('Fix the issues shown in the preview panel first.');
+      return;
+    }
     setBusy(kind);
     setNote('');
     try {
@@ -53,10 +61,10 @@ export function DesignStep({ board, metrics, buffers }: { board: BoardState; met
       <h2>Theme</h2>
       <div className="row" style={{ flexWrap: 'wrap' }}>
         {THEME_PRESETS.map((p) => (
-          <button key={p.id} className="chip" title={p.description} onClick={() => setTheme(p.theme)}>{p.name}</button>
+          <button key={p.id} className="chip" title={p.description} onClick={() => patch({ theme: structuredClone(p.theme) })}>{p.name}</button>
         ))}
       </div>
-      {COLOR_FIELDS.map(({ key, label }) => (
+      {COLOR_FIELDS.map(({ key, label, clearable }) => (
         <div className="field row" key={key}>
           <label htmlFor={`c-${key}`}>{label}</label>
           <input
@@ -65,7 +73,9 @@ export function DesignStep({ board, metrics, buffers }: { board: BoardState; met
             value={HEX.test(draft.theme[key] ?? '') ? (draft.theme[key] as string) : '#141414'}
             onChange={(e) => setTheme({ [key]: e.target.value })}
           />
-          <button className="ghost" onClick={() => setTheme({ [key]: '' })} title="Clear (tints only)">clear</button>
+          {clearable && (
+            <button className="ghost" onClick={() => setTheme({ [key]: '' })} title="Clear tint">clear</button>
+          )}
         </div>
       ))}
       <div className="field row">
