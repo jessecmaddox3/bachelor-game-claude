@@ -110,4 +110,16 @@ describe('solveGrid', () => {
       m.widthIn('-5 to 5', 'bodyBold', ranges.result.bodyPt),
     ).toBeLessThanOrEqual(ranges.result.pointsColW - 2 * CELL_PAD + 0.01);
   });
+
+  it('the honoree bonus label always fits the task column', () => {
+    const { spec, result } = solve({
+      posterSize: '18x24',
+      honoree: 'A'.repeat(30),
+      honoreeBonusRow: true,
+      activities: Array.from({ length: 5 }, (_, i) => ({ name: `T${i}`, points: 1 })),
+    });
+    if (!result.feasible) throw new Error('expected feasible');
+    const label = `**BONUS POINTS GRANTED BY ${spec.honoree.toUpperCase()}**`;
+    expect(m.widthIn(label, 'bodyBold', result.bodyPt)).toBeLessThanOrEqual(result.taskColW - 2 * CELL_PAD + 0.01);
+  });
 });

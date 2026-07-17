@@ -129,13 +129,17 @@ function tryFit(grid: Box, spec: BoardSpec, m: FontMetrics, pt: number): GridLay
   // fits its wrap budget by exact float equality (no +pad/-pad round trip).
   const capInner = grid.w * 0.34 - 2 * CELL_PAD;
   const totalNeed = m.widthIn(TOTALS_LABEL, 'bodyBold', pt);
-  // The honoree bonus row's bold label must also fit the column (mirrors the TOTAL fix).
+  // The honoree bonus row's bold label widens the column while the cap is slack;
+  // when the cap binds, the explicit rejection below guarantees the fit instead.
   const bonusNeed = spec.honoreeBonusRow
     ? m.widthIn(`**BONUS POINTS GRANTED BY ${spec.honoree.toUpperCase()}**`, 'bodyBold', pt)
     : 0;
   const naturalInner = Math.max(totalNeed, bonusNeed, ...spec.activities.map((a) => m.widthIn(a.name, 'body', pt)));
   const taskInner = Math.min(naturalInner, capInner);
   const taskColW = taskInner + 2 * CELL_PAD;
+  // The bonus label renders as a single line; reject rungs where the cap-bound
+  // column can't hold it — the ladder shrinks bonusNeed until it fits.
+  if (spec.honoreeBonusRow && bonusNeed > taskInner) return null;
   let wrappedTasks = 0;
   const taskLines = spec.activities.map((a) => {
     const r = wrapToWidth(a.name, taskInner, 'body', pt, m, 2);
