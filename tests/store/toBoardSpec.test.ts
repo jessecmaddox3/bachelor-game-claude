@@ -39,6 +39,24 @@ describe('toBoardSpec', () => {
     expect(r.errors.some((e) => e.field === 'players' && /at least 8/i.test(e.message))).toBe(true);
   });
 
+  it('maps an empty required string to a fill-this-in message', () => {
+    const d = defaultDraft();
+    d.title = '';
+    const r = toBoardSpec(d);
+    expect(r.ok).toBe(false);
+    if (r.ok) return;
+    expect(r.errors.find((e) => e.field === 'title')?.message).toMatch(/fill this in/i);
+  });
+
+  it('maps an over-length string to a keep-under message', () => {
+    const d = defaultDraft();
+    d.honoree = 'X'.repeat(40);
+    const r = toBoardSpec(d);
+    expect(r.ok).toBe(false);
+    if (r.ok) return;
+    expect(r.errors.find((e) => e.field === 'honoree')?.message).toMatch(/under 30/i);
+  });
+
   it('flattens the points union error to a friendly message', () => {
     const d = defaultDraft();
     (d.activities[0] as { points: unknown }).points = 'garbage';

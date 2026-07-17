@@ -20,6 +20,14 @@ export const useWizardStore = create<WizardState>()(
       reset: () => set({ draft: defaultDraft(), step: 0 }),
     }),
     // Versioned key: build-4 saves used different keys and are deliberately ignored.
-    { name: 'bachelor-board-v2' },
+    {
+      name: 'bachelor-board-v2',
+      // Deep-merge the persisted draft over defaults so newly-added Draft
+      // fields are backfilled from defaults instead of shipping undefined.
+      merge: (persisted, current) => {
+        const p = persisted as Partial<WizardState> | undefined;
+        return { ...current, ...p, draft: { ...current.draft, ...(p?.draft ?? {}) } };
+      },
+    },
   ),
 );

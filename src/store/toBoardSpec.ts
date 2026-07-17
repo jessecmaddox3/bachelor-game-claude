@@ -1,3 +1,4 @@
+import type { z } from 'zod';
 import { boardSpecSchema, type BoardSpec, type PointsValue } from '../models/boardSpec';
 import { ACTIVITY_LIBRARY, STARTER_RULES, STARTER_FOOTNOTE } from '../content/activities';
 import { THEME_PRESETS } from '../content/themes';
@@ -19,7 +20,8 @@ export type Draft = {
 };
 
 export function defaultDraft(): Draft {
-  return {
+  // Cloned so in-place draft mutation can never corrupt the shared preset/content constants.
+  return structuredClone({
     title: 'THE BACHELOR WEEKEND OF',
     honoree: 'YOUR GUY HERE',
     subtitle: '',
@@ -37,7 +39,7 @@ export function defaultDraft(): Draft {
     honoreeBonusRow: true,
     cornerBoxes: ['GRAND CHAMPION', 'THE LOSER OF IT ALL'],
     theme: THEME_PRESETS[0]!.theme,
-  };
+  });
 }
 
 /** Parse a user-typed points value: "3", "TBD", "1 to 6", "-5 - 5". Null when unparseable. */
@@ -67,6 +69,17 @@ const FRIENDLY: Array<[RegExp, (path: string) => string]> = [
   [/points$/, () => 'Points must be a whole number, a range like "1 to 6", or TBD.'],
 ];
 
+/** Friendly generic fallback for string length issues; raw zod message otherwise. */
+function genericMessage(issue: z.ZodIssue): string {
+  if (issue.code === 'too_small' && issue.type === 'string') {
+    return Number(issue.minimum) === 1 ? 'Please fill this in.' : `Please enter at least ${issue.minimum} characters.`;
+  }
+  if (issue.code === 'too_big' && issue.type === 'string') {
+    return `Keep this under ${issue.maximum} characters.`;
+  }
+  return issue.message;
+}
+
 export function toBoardSpec(draft: Draft): SpecResult {
   const candidate = {
     ...draft,
@@ -78,7 +91,7 @@ export function toBoardSpec(draft: Draft): SpecResult {
   const errors: FieldError[] = parsed.error.issues.map((issue) => {
     const field = issue.path.join('.');
     const friendly = FRIENDLY.find(([re]) => re.test(field));
-    return { field, message: friendly ? friendly[1](field) : issue.message };
+    return { field, message: friendly ? friendly[1](field) : genericMessage(issue) };
   });
   // Dedupe by field (union errors emit several issues per path)
   const seen = new Set<string>();
