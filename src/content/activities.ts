@@ -62,7 +62,7 @@ export const STARTER_RULES = [
   { heading: 'WATER BOY', text: 'Go around offering water to every person to ensure they are hydrated.' },
   { heading: 'COIN RACE', text: 'Spin a coin on a table, then start chugging. Finish before the coin falls to win.' },
   { heading: 'ICE BATH', text: 'Sit in the ice bath for one minute. Emerge with your entire body wet.' },
-  { heading: 'CHING CHONG CHUG', text: 'There is a dedicated ping pong ball. The possessor tries to put it in someone's cup; success means they chug and take the ball.' },
+  { heading: 'CHING CHONG CHUG', text: "There is a dedicated ping pong ball. The possessor tries to put it in someone's cup; success means they chug and take the ball." },
 ];
 
 export const STARTER_FOOTNOTE = 'Speaking a banned word means you must finish your drink.';
