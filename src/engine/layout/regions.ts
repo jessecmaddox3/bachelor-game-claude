@@ -28,7 +28,8 @@ export interface Regions {
   grid: Box;
   /**
    * Rules strip pinned to the content bottom at full content width.
-   * `undefined` when the spec has no rules (never a zero-sized box).
+   * `undefined` when the spec has neither rules nor a footnote (never a
+   * zero-sized box).
    */
   rules?: Box;
   /**
@@ -49,7 +50,7 @@ export function partitionRegions(spec: BoardSpec): Regions {
   const content: Box = { x: margin, y: margin, w: pageW - 2 * margin, h: pageH - 2 * margin };
 
   const headerH = clamp(pageH * 0.11, 2.2, 6);
-  const rulesH = spec.rules.length > 0 ? clamp(pageH * 0.07, 1.5, 4) : 0;
+  const rulesH = spec.rules.length > 0 || spec.footnote !== undefined ? clamp(pageH * 0.07, 1.5, 4) : 0;
 
   const bodyTop = content.y + headerH + REGION_GAP;
   const bodyBottom = content.y + content.h - (rulesH ? rulesH + REGION_GAP : 0);

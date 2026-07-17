@@ -5,7 +5,7 @@ import type { GridLayout } from '../layout/gridSolver';
 import type { FontMetrics, FontId } from '../fonts/metrics';
 import type { Scene, Primitive } from './types';
 import type { Box } from '../geometry';
-import { fitSizePt, wrapToWidth } from '../layout/wrap';
+import { fitSizePt, wrapToWidth, hardEllipsize } from '../layout/wrap';
 import {
   CELL_PAD,
   POINTS_HEADER,
@@ -405,35 +405,73 @@ function composeExtras(spec: BoardSpec, grid: Box, L: GridLayout, m: FontMetrics
 }
 
 function composeRules(spec: BoardSpec, box: Box, m: FontMetrics, prims: Primitive[]) {
-  const text = spec.rules.map((r, i) => `${i + 1}. ${r.text}`).join('    ');
-  const render = (lines: string[], pt: number) => {
+  if (spec.rules.length === 0 && !spec.footnote) return;
+  const accent = spec.theme.accentColor;
+  const PAD = 0.2;
+  const titleH = 0.28;
+  const footH = spec.footnote ? 0.22 : 0;
+  const bodyTop = box.y + PAD / 2 + titleH;
+  const bodyH = box.h - PAD - titleH - footH;
+  const cols = spec.rules.length > 6 ? 3 : spec.rules.length > 2 ? 2 : 1;
+  const colGap = 0.3;
+  const colW = (box.w - 2 * PAD - (cols - 1) * colGap) / cols;
+
+  // "GAME RULES:" strip title
+  prims.push({
+    kind: 'text',
+    box: { x: box.x + PAD, y: box.y + PAD / 2, w: box.w - 2 * PAD, h: titleH },
+    text: 'GAME RULES:',
+    fontId: 'bodyBold',
+    sizePt: fitSizePt('GAME RULES:', box.w - 2 * PAD, titleH, 'bodyBold', m, 14, 7) ?? 7,
+    color: accent,
+    align: 'left',
+  });
+
+  // Fit pass: find the largest pt (9 -> 5) where every rule block fits its column.
+  for (let pt = 9; pt >= 5; pt -= 0.5) {
     const lineH = m.lineHeightIn('body', pt);
-    let y = box.y + 0.1;
-    for (const line of lines) {
-      prims.push({
-        kind: 'text',
-        box: { x: box.x + 0.2, y, w: box.w - 0.4, h: lineH },
-        text: line,
-        fontId: 'body',
-        sizePt: pt,
-        color: INK,
-        align: 'left',
-      });
-      y += lineH;
+    const headH = m.lineHeightIn('bodyBold', pt);
+    // Wrap every block at this size; distribute round-robin into columns by cumulative height.
+    const blocks = spec.rules.map((r) => {
+      const heading = r.heading ? hardEllipsize(`${r.heading}:`, colW, 'bodyBold', pt, m).text : null;
+      const lines = wrapToWidth(r.text, colW, 'body', pt, m, 6).lines;
+      return { heading, lines, h: (heading ? headH : 0) + lines.length * lineH + 0.08 };
+    });
+    const colHeights = Array.from({ length: cols }, () => 0);
+    const placed: Array<{ col: number; y: number; block: (typeof blocks)[number] }> = [];
+    let ok = true;
+    for (const block of blocks) {
+      // Greedy: shortest column first keeps columns balanced.
+      const col = colHeights.indexOf(Math.min(...colHeights));
+      if (colHeights[col]! + block.h > bodyH) { ok = false; break; }
+      placed.push({ col, y: colHeights[col]!, block });
+      colHeights[col]! += block.h;
     }
-  };
-  for (let pt = 14; pt >= 7; pt -= 0.5) {
-    const { lines } = wrapToWidth(text, box.w - 0.4, 'body', pt, m, 99);
-    if (lines.length * m.lineHeightIn('body', pt) <= box.h - 0.2) {
-      render(lines, pt);
-      return;
+    if (!ok && pt > 5) continue;
+    // Render (at 5pt render whatever fits; blocks that would exceed the column are dropped
+    // — unreachable within schema caps, mirrors the pre-existing floor-fallback philosophy).
+    for (const { col, y, block } of placed) {
+      const x = box.x + PAD + col * (colW + colGap);
+      let cy = bodyTop + y;
+      if (block.heading) {
+        prims.push({ kind: 'text', box: { x, y: cy, w: colW, h: headH }, text: block.heading, fontId: 'bodyBold', sizePt: pt, color: accent, align: 'left' });
+        cy += headH;
+      }
+      for (const line of block.lines) {
+        prims.push({ kind: 'text', box: { x, y: cy, w: colW, h: lineH }, text: line, fontId: 'body', sizePt: pt, color: INK, align: 'left' });
+        cy += lineH;
+      }
+    }
+    break;
+  }
+
+  if (spec.footnote) {
+    const fLineH = m.lineHeightIn('body', 7);
+    const fLines = wrapToWidth(spec.footnote, box.w - 2 * PAD, 'body', 7, m, 2);
+    let fy = box.y + box.h - footH;
+    for (const line of fLines.lines) {
+      prims.push({ kind: 'text', box: { x: box.x + PAD, y: fy, w: box.w - 2 * PAD, h: fLineH }, text: line, fontId: 'body', sizePt: 7, color: accent, align: 'left' });
+      fy += fLineH;
     }
   }
-  // Floor fallback (unreachable within schema caps, kept as latent safety):
-  // bound the line count and let wrapToWidth ellipsize the tail, guaranteeing
-  // fit on both axes rather than silently dropping the strip.
-  const lineH = m.lineHeightIn('body', 7);
-  const maxLines = Math.max(1, Math.floor((box.h - 0.2) / lineH));
-  const { lines } = wrapToWidth(text, box.w - 0.4, 'body', 7, m, maxLines);
-  render(lines, 7);
 }

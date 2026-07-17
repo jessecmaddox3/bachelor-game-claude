@@ -233,6 +233,43 @@ describe('composeScene: steven theme elements', () => {
   });
 });
 
+describe('composeScene: structured rules footer', () => {
+  const rules = [
+    { heading: 'BUFFALO', text: 'If someone is drinking with their right hand, call Buffalo and they chug.' },
+    { heading: 'WATER BOY', text: 'Offer water to every person to keep them hydrated.' },
+    { heading: 'COIN RACE', text: 'Spin a coin, then chug before it falls to win.' },
+    { heading: 'ICE BATH', text: 'One minute, fully wet.' },
+    { text: 'Score your own points honestly.' },
+  ];
+
+  it('renders GAME RULES heading, rule headings, and texts in columns', () => {
+    const { scene } = build({ rules, footnote: 'Speaking a banned word means you must finish your drink.' });
+    const strings = texts(scene).map((t) => t.text);
+    expect(strings).toContain('GAME RULES:');
+    expect(strings).toContain('BUFFALO:');
+    expect(strings.join(' ')).toContain('call Buffalo and they chug.');
+    expect(strings.join(' ')).toContain('Speaking a banned word');
+    expect(overflowingRuns(scene, m)).toEqual([]);
+    expect(outOfPage(scene)).toEqual([]);
+  });
+
+  it('headed rules use the accent color for headings', () => {
+    const { scene } = build({ rules, theme: { accentColor: '#3A6BC7' } });
+    const heading = texts(scene).find((t) => t.text === 'BUFFALO:');
+    expect(heading!.color).toBe('#3A6BC7');
+  });
+
+  it('worst-case rules still fit', () => {
+    const fat = Array.from({ length: 12 }, (_, i) => ({
+      heading: `RULE NUMBER ${i} WITH A LONG HEADING`,
+      text: 'x'.repeat(280) + ' end.',
+    }));
+    const { scene } = build({ posterSize: '18x24', rules: fat, footnote: 'f'.repeat(190) });
+    expect(overflowingRuns(scene, m)).toEqual([]);
+    expect(outOfPage(scene)).toEqual([]);
+  });
+});
+
 describe('composeScene: write-in elements', () => {
   it('renders blank write-in rows with a rotated TBD marker', () => {
     const { scene } = build({ writeInRows: 2 });
