@@ -179,11 +179,11 @@ function composeGrid(spec: BoardSpec, grid: Box, L: GridLayout, m: FontMetrics, 
 
   // Corner label block in the band above the task column (theme-gated)
   if (spec.theme.cornerLabel !== '') {
-    const labelBox: Box = { x: grid.x + CELL_PAD, y: grid.y + CELL_PAD, w: L.taskColW * 0.9, h: L.headerBandH * 0.55 };
+    const labelBox: Box = { x: grid.x + CELL_PAD, y: grid.y + CELL_PAD, w: L.taskColW - 2 * CELL_PAD, h: L.headerBandH * 0.55 };
     fittedLine(spec.theme.cornerLabel, labelBox, 'bodyBold', m, prims, 300, accentColor, 'left');
     if (spec.theme.cornerSubLabel !== '') {
       const subH = L.headerBandH * 0.18;
-      const subBox: Box = { x: grid.x + CELL_PAD, y: grid.y + L.headerBandH - CELL_PAD - subH, w: L.taskColW * 0.9, h: subH };
+      const subBox: Box = { x: grid.x + CELL_PAD, y: grid.y + L.headerBandH - CELL_PAD - subH, w: L.taskColW - 2 * CELL_PAD, h: subH };
       const pt = fitSizePt(spec.theme.cornerSubLabel, subBox.w, subBox.h, 'bodyBold', m, L.bodyPt, 6);
       if (pt !== null) {
         prims.push({ kind: 'text', box: subBox, text: spec.theme.cornerSubLabel, fontId: 'bodyBold', sizePt: pt, color: activityColor, align: 'left' });
