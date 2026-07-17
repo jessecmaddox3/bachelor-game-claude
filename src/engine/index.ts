@@ -5,3 +5,7 @@ export type { QualityReport, Grade } from './layout/quality';
 export type { Box } from './geometry';
 export { PT_PER_IN } from './geometry';
 export { boardSpecSchema, POSTER_SIZES, type BoardSpec, type PosterSizeId } from '../models/boardSpec';
+export { renderSvg, type SvgOptions } from './render/svg';
+export { renderPdf } from './render/pdf';
+export { planPngScale, rasterizePng, MAX_DIM_PX, MAX_AREA_PX, type PngPlan } from './render/png';
+export { placeText, type Placement } from './render/place';
