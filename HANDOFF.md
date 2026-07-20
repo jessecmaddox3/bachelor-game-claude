@@ -1,66 +1,62 @@
-# Handoff — Bachelor/Party Game Board Poster Generator (v5 rebuild)
+# Handoff
 
-**For:** an incoming reviewer (Codex) taking over to review the work.
-**Date:** 2026-07-17. **Branch:** `main` (63 commits ahead of `origin/main`, **not pushed**). **Tree:** clean. **Tests:** 164/164 green (`npm test`), `npm run build` clean, `npx tsc --noEmit` clean.
+- Original goal: Rebuild Jesse's 2017 bachelor game board as a shelf-stable
+  names-plus-activities poster generator, then use the challenge library as the
+  foundation for a private friend-and-family challenge game. Immediate focus:
+  make the wizard UI genuinely good (it currently "sucks" per Jesse) and build
+  out real event-specific activity content, then get it live on Vercel.
 
-## What this is
+- Current phase: **Planning complete for the Setup + Activities redesign.**
+  Claude (Opus, 2026-07-20) wrote a full build handoff for Codex to execute.
+  Next actor is **Codex**. Two new planning docs are the source of truth:
+  - `docs/product/2026-07-20-setup-and-activities-redesign-HANDOFF.md` — the
+    build spec (interaction fixes, activities flow, visual design pass, build
+    order, guardrails, deploy path, verify).
+  - `docs/product/2026-07-20-activity-seed-library.md` — ~219 event-specific seed
+    challenges across 8 occasions (adds a new `beach-trip` occasion), each with
+    category + default points + difficulty + adultOnly, ready to wire into
+    `src/content/activities.ts`.
 
-A React 19 + TypeScript + Vite app that generates print-ready poster PNGs/PDFs of a party "game board" — a scoring grid (activities down the left, players across the top, point values, a totals row, bespoke elements, a rules footer). This is the **5th rebuild**; every prior build failed at the renderer (guessed font sizes → text silently squished by Canvas `fillText`). The v5 rebuild fixes that root cause with a **measurement-driven, pure-TypeScript layout engine** and was built/reviewed across four plans this session (all merged to `main`).
+- Done (this session): Confirmed Vercel migration is complete and healthy —
+  `jessemaddox.com/gameboard` returns 200, Vercel auto-deploys `main`, the old
+  Netlify "credits exceeded" block is gone (the improved picker is already live).
+  Generated the full per-occasion seed library (8 parallel agents). Wrote the two
+  planning docs above. Committed only those docs.
 
-Deployed (static build) at **https://jessemaddox.com/gameboard** (Netlify; source in a separate repo `~/claude/jessemaddox.com`).
+- Pending (Codex to build, per the redesign handoff, in this order):
+  1. Data: add `beach-trip` occasion; port the seed library into
+     `src/content/activities.ts`; update `RECOMMENDED_ACTIVITY_IDS`; keep
+     `tests/content/content.test.ts` invariants green.
+  2. Store: fix `wizardStore.ts` defaults so a fresh board is empty/sane; make
+     occasion a single early choice.
+  3. Setup step: rebuild player entry as chips + Enter-to-add; move occasion to
+     top; make preset loading clearly opt-in (no filler rows to delete).
+  4. Activities step: card UI + category grouping; inherit occasion from Setup.
+  5. Visual pass: blue design-system token block in `index.css`; restyle both
+     steps + wizard chrome + Design step.
+  6. Verify, rebuild site output, push `jessemaddox.com` to deploy.
 
-## Architecture (one-way pipeline)
+- Changed files (this session): NEW `docs/product/2026-07-20-*` (2 files) and
+  updated `HANDOFF.md`. NOTE: the whole app remains uncommitted from prior Codex
+  work (its sandbox couldn't write `.git`) — do NOT `git add -A`; stage narrowly.
 
-```
-BoardSpec (zod)                     src/models/boardSpec.ts
-  → FontMetrics (opentype.js)       src/engine/fonts/metrics.ts   (kerning-OFF, matches pdf-lib)
-  → partitionRegions                src/engine/layout/regions.ts  (header / grid / rules / optional rail)
-  → solveGrid                       src/engine/layout/gridSolver.ts (0.5pt font ladder, measured degradation, feasibility gate)
-  → gradeLayout                     src/engine/layout/quality.ts  (good/tight/poor + advice)
-  → composeScene                    src/engine/scene/compose.ts   (→ flat Scene primitives in INCHES)
-  → renderers (consume same Scene): svg.ts / pdf.ts / png.ts + place.ts (shared baseline math)
-```
-Public API barrel: `src/engine/index.ts` (`buildBoard`, `renderSvg`, `renderPdf`, `planPngScale`, `rasterizePng`, types). Wizard UI: `src/app/` (App shell + Preview + 3 steps), store `src/store/` (zustand + Draft→BoardSpec validation), content `src/content/` (activity library + theme presets).
+- Verify command: `git diff --check && npx tsc --noEmit && npm test && npm run build`.
+  Baseline before this session: typecheck clean, 180 tests pass, Vite build clean
+  (existing chunk-size warning OK). Site rebuild: `npx vite build --base=/projects/gameboard/`.
 
-**Core invariant** (the whole point): every `TextRun` in a Scene is pre-measured and guaranteed to fit its box; `tests/helpers/invariants.ts` (`overflowingRuns`, `outOfPage`) enforces it, and a sweep (`tests/engine/sweep.test.ts`) runs it across the full content envelope. The "squished text" bug class is structurally impossible now — **do not weaken these tests.**
+- Current risks / known issues: Large uncommitted app diff predates this session;
+  Codex should review/commit it as part of "cleaning the place up." Seed content
+  has minor cross-occasion duplication by design (occasion-scoped); dedupe only on
+  identical IDs. Adult-only rows must never land in kids-weekend defaults.
 
-## What shipped (all merged, all reviewed)
+- Do not repeat: Do not rebuild the board engine, renderer, PDF/SVG export, or
+  fonts pipeline — scope is the wizard UI + activity content only. Do not build
+  the multiplayer "lobbing challenges" game here — it's a separate later project
+  (`docs/product/2026-07-20-challenge-chain-mvp.md`). Do not reintroduce risky
+  2017 legacy rows into generic/default sets.
 
-- **Plan 1** — core layout engine (spec `docs/superpowers/specs/2026-07-15-board-rebuild-design.md`, plan `.../plans/2026-07-15-plan1-...md`).
-- **Plan 2** — renderers + export (SVG preview, vector PDF w/ subset-embedded fonts, PNG with auto-DPI within browser canvas limits; 48×72 → 227 DPI). Shared `place.ts` guarantees SVG≈PDF WYSIWYG.
-- **Plan 2.5** — "Steven fidelity": point ranges, MAX POINTS column, structured rules + footnote, write-in rows, honoree bonus row, corner boxes, theme palette. Sample `samples/steven-like.{svg,png,pdf}` (gitignored, regenerated by `tests/engine/samples.test.ts`).
-- **Plan 3** — wizard UI: 3-step flow, live debounced SVG preview + quality badge, PDF/PNG export (lazy 1.15MB pdf chunk; Safari blank-canvas probe in `png.ts`), versioned localStorage, start-over. QA walkthrough in `docs/QA-checklist.md`.
+- Suggested next step (Codex): Read the redesign handoff + seed library, then
+  execute the build order above. Deploy via the site repo → Vercel path when done.
 
-Each plan ran spec→plan→subagent execution with a spec-compliance + code-quality review per task. Review cycles caught real bugs (font-ladder alignment, points-header band minimum, TOTAL/float overflow, subtitle-outranks-title, empty-subtitle edge, BONUS-label trim safety, a Critical wizard focus-loss from content-derived React keys, a PDF-crashing "clear" button, theme-preset merge-vs-replace). Prior build (build 4) lives in git history before the first v5 commit.
-
-## How to run / review
-
-```bash
-npm install
-npm test              # vitest, 164 tests
-npm run build         # tsc -b && vite build
-npm run dev           # wizard at :5173 (or :5174)
-npx vitest run tests/engine/samples.test.ts   # regenerates samples/steven-like.* for eyeballing
-```
-Reference targets for visual comparison: `examples/BACHELOR_Steven_GAME.pdf` (the Plan-2.5 fidelity benchmark) and `~/Downloads/BACHELOR_BRACKETS.pdf` (Jesse's real 2017 board — the *next* target, see roadmap).
-
-## Known caveats / deferred items (context for review, not necessarily bugs)
-
-- `main` is **63 commits ahead of `origin/main`** and unpushed — intentional; Jesse hasn't asked to push.
-- First PDF-export click has multi-second latency (lazy chunk eval + fontkit subsetting); button shows "Rendering…". Candidate for a snappier indicator.
-- Safari/iOS canvas limits are tighter than the Chrome/Firefox constants in `png.ts` and Safari fails *silently* — mitigated by a post-draw pixel probe that throws a friendly error (PDF is the fallback).
-- `solveGrid` worst case ~205ms; the preview debounces 300ms. Closed-form `fitSizePt` and O(n²) `hardEllipsize` are documented deferred optimizations (see the engine doc comments / project memory).
-- Wizard font-family strings in `svg.ts` (`FAMILY`/`WEIGHT`) are the single source of truth the in-DOM preview's `FontFace` load must match exactly, or preview silently font-falls-back while `textLength` pins measured widths.
-- Rules footer at absolute schema caps (12 max-length rules on 18×24) can silently drop overflow blocks (invariant-safe; a `droppedRules` count for quality advice is a deferred idea).
-- `theme.rowTint`/color fields are unconstrained strings server-side (SVG escapes them defensively; the wizard uses `<input type=color>` + scoped clear buttons). A hex-regex on the schema is a deferred hardening.
-
-## What's next (approved, NOT started)
-
-Jesse gave his real 2017 landscape board as a new pixel-perfect target. Approved 5-phase roadmap in **`docs/superpowers/specs/2026-07-17-landscape-brackets-roadmap.md`** (also in project memory): P1 occasion-pack presets + Jesse's 2017 data (30 players, 37 activities w/ exact points, results boxes, verbatim NDA rules) on the current portrait engine; P2 landscape sizes + Montserrat font registry + −45° diagonal names; P3 dual rails + right-rail results/rules + inline "2 (4)" points; P4 tournament-bracket widget; P5 assemble a reusable "Landscape / Brackets" template + pixel-match. Locked decisions: free Gotham-alike font, data preset first, reusable template. Nothing here is coded yet.
-
-## Suggested review focus
-
-1. The invariant/feasibility guarantees in `gridSolver.ts` + `place.ts` + `compose.ts` — is the "no text overflows its box" claim actually airtight (the sweep passes, but adversarial specs welcome)?
-2. `place.ts` rotation math (SVG y-down vs PDF y-up) — the WYSIWYG keystone.
-3. The wizard data path `store/toBoardSpec.ts` (points-union parsing, friendly errors, persist backfill, uid row identity) and whether any React key/uncontrolled-input staleness remains in `src/app/steps/`.
-4. Export correctness in `render/{pdf,png}.ts` (font embedding, Safari probe, DPI planning).
+- Last tool + date: Claude Opus (planning + content generation via 8 sub-agents),
+  2026-07-20. Next: Codex build.
