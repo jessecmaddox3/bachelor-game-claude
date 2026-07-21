@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useWizardStore } from '../../store/wizardStore';
 import { THEME_PRESETS } from '../../content/themes';
-import { toBoardSpec } from '../../store/toBoardSpec';
-import { buildBoard, planPngScale, type FontMetrics, type FontBuffers } from '../../engine';
-import { exportPdf, exportPng } from '../export';
+import { parsePointsInput, toBoardSpec } from '../../store/toBoardSpec';
+import { buildBoard, planPngScale, POSTER_SIZES, type FontMetrics, type FontBuffers, type PosterSizeId } from '../../engine';
+import { pointsLabel } from '../../models/boardSpec';
+import { exportPdf, exportPng, exportSvg } from '../export';
 import type { BoardState } from '../useBoard';
 
 const HEX = /^#[0-9a-fA-F]{6}$/;
@@ -21,12 +22,34 @@ const COLOR_FIELDS: Array<{ key: 'titleColor' | 'accentColor' | 'activityColor' 
 ];
 
 export function DesignStep({ board, metrics, buffers }: { board: BoardState; metrics: FontMetrics; buffers: FontBuffers | null }) {
-  const { draft, patch } = useWizardStore();
+  const { draft, patch, setStep } = useWizardStore();
   const [busy, setBusy] = useState<string | null>(null);
   const [note, setNote] = useState('');
+  const rulesEditor = useRef<HTMLTextAreaElement>(null);
   const setTheme = (p: Partial<typeof draft.theme>) => patch({ theme: { ...draft.theme, ...p } });
+  const setActivity = (i: number, changes: Partial<typeof draft.activities[number]>) =>
+    patch({ activities: draft.activities.map((row, j) => (j === i ? { ...row, ...changes } : row)) });
 
-  const doExport = async (kind: 'pdf' | 'png') => {
+  const formatRules = (kind: 'bold' | 'bullets') => {
+    const editor = rulesEditor.current;
+    if (!editor) return;
+    const start = editor.selectionStart;
+    const end = editor.selectionEnd;
+    const selected = draft.rulesContent.slice(start, end);
+    const replacement = kind === 'bold'
+      ? `**${selected}**`
+      : (selected || draft.rulesContent).split('\n').map((line) => !line.trim() || line.startsWith('- ') ? line : `- ${line}`).join('\n');
+    const replaceStart = kind === 'bullets' && !selected ? 0 : start;
+    const replaceEnd = kind === 'bullets' && !selected ? draft.rulesContent.length : end;
+    const next = `${draft.rulesContent.slice(0, replaceStart)}${replacement}${draft.rulesContent.slice(replaceEnd)}`;
+    patch({ rulesContent: next });
+    queueMicrotask(() => {
+      editor.focus();
+      editor.setSelectionRange(replaceStart, replaceStart + replacement.length);
+    });
+  };
+
+  const doExport = async (kind: 'svg' | 'pdf' | 'png') => {
     if (!buffers) return;
     const validated = toBoardSpec(draft);
     if (!validated.ok) {
@@ -41,10 +64,12 @@ export function DesignStep({ board, metrics, buffers }: { board: BoardState; met
     setBusy(kind);
     setNote('');
     try {
-      if (kind === 'pdf') {
-        await exportPdf(built.scene, metrics, buffers, draft.honoree, draft.posterSize);
+      if (kind === 'svg') {
+        exportSvg(built.scene, metrics, buffers, draft.honoree, draft.posterSize, draft.title);
+      } else if (kind === 'pdf') {
+        await exportPdf(built.scene, metrics, buffers, draft.honoree, draft.posterSize, draft.title);
       } else {
-        const dpi = await exportPng(built.scene, metrics, buffers, draft.honoree, draft.posterSize);
+        const dpi = await exportPng(built.scene, metrics, buffers, draft.honoree, draft.posterSize, draft.title);
         if (dpi < 300) setNote(`PNG exported at ${dpi} DPI (browser canvas limit for this size). The PDF export is full quality at any size.`);
       }
     } catch (err) {
@@ -57,84 +82,153 @@ export function DesignStep({ board, metrics, buffers }: { board: BoardState; met
   const pngPlan = planPngScale(...(draft.posterSize.split('x').map(Number) as [number, number]), 300);
 
   return (
-    <div>
-      <h2>Theme</h2>
-      <div className="row" style={{ flexWrap: 'wrap' }}>
-        {THEME_PRESETS.map((p) => (
-          <button key={p.id} className="chip" title={p.description} onClick={() => patch({ theme: structuredClone(p.theme) })}>{p.name}</button>
-        ))}
-      </div>
-      {COLOR_FIELDS.map(({ key, label, clearable }) => (
-        <div className="field row" key={key}>
-          <label htmlFor={`c-${key}`}>{label}</label>
-          <input
-            id={`c-${key}`}
-            type="color"
-            value={HEX.test(draft.theme[key] ?? '') ? (draft.theme[key] as string) : '#141414'}
-            onChange={(e) => setTheme({ [key]: e.target.value })}
-          />
-          {clearable && (
-            <button className="ghost" onClick={() => setTheme({ [key]: '' })} title="Clear tint">clear</button>
-          )}
+    <div className="design-step">
+      <div className="step-heading">
+        <div>
+          <span className="eyebrow">Step 3</span>
+          <h2>Finish the poster</h2>
+          <p>Choose the visual style, check the rules, then export a print-ready file.</p>
         </div>
-      ))}
-      <div className="field row">
-        <input id="allcaps" type="checkbox" checked={draft.theme.allCaps ?? false} onChange={(e) => setTheme({ allCaps: e.target.checked })} />
-        <label htmlFor="allcaps">ALL-CAPS activity names</label>
-      </div>
-      <div className="field">
-        <label htmlFor="cornerLabel">Corner label</label>
-        <input id="cornerLabel" value={draft.theme.cornerLabel ?? ''} maxLength={20} onChange={(e) => setTheme({ cornerLabel: e.target.value })} />
       </div>
 
-      <h2>Corner boxes</h2>
-      {draft.cornerBoxes.map((label, i) => (
-        <div className="row" key={i}>
-          <input value={label} maxLength={30} onChange={(e) => patch({ cornerBoxes: draft.cornerBoxes.map((x, j) => (j === i ? e.target.value : x)) })} />
-          <button className="ghost" onClick={() => patch({ cornerBoxes: draft.cornerBoxes.filter((_, j) => j !== i) })}>×</button>
+      <section className="design-section" aria-labelledby="theme-heading">
+        <div className="section-heading compact">
+          <div><h3 id="theme-heading">Theme</h3><p>Start with a preset, then tune only what matters.</p></div>
         </div>
-      ))}
-      {draft.cornerBoxes.length < 3 && (
-        <button className="ghost" onClick={() => patch({ cornerBoxes: [...draft.cornerBoxes, 'NEW BOX'] })}>+ Corner box</button>
-      )}
-
-      <h2>Rules</h2>
-      {draft.rules.map((r, i) => (
-        <div className="field" key={i}>
-          <div className="row">
-            <input
-              placeholder="HEADING (optional)"
-              value={r.heading ?? ''}
-              maxLength={40}
-              onChange={(e) => patch({ rules: draft.rules.map((x, j) => (j === i ? { ...x, heading: e.target.value || undefined } : x)) })}
-            />
-            <button className="ghost" onClick={() => patch({ rules: draft.rules.filter((_, j) => j !== i) })}>×</button>
+        <div className="field poster-size-field">
+          <label htmlFor="size">Poster size</label>
+          <select id="size" value={draft.posterSize} onChange={(event) => patch({ posterSize: event.target.value as PosterSizeId })}>
+            {Object.keys(POSTER_SIZES).map((size) => (
+              <option key={size} value={size}>{size.replace('x', '" × ')}"</option>
+            ))}
+          </select>
+        </div>
+        <div className="theme-presets">
+          {THEME_PRESETS.map((p) => (
+            <button key={p.id} className="chip" title={p.description} onClick={() => patch({ theme: structuredClone(p.theme) })}>{p.name}</button>
+          ))}
+        </div>
+        <div className="color-grid">
+          {COLOR_FIELDS.map(({ key, label, clearable }) => (
+            <div className="field color-field" key={key}>
+              <label htmlFor={`c-${key}`}>{label}</label>
+              <div className="color-control">
+                <input
+                  id={`c-${key}`}
+                  type="color"
+                  value={HEX.test(draft.theme[key] ?? '') ? (draft.theme[key] as string) : '#141414'}
+                  onChange={(e) => setTheme({ [key]: e.target.value })}
+                />
+                {clearable && <button className="ghost compact-button" onClick={() => setTheme({ [key]: '' })} title="Clear tint">clear</button>}
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="options-grid design-options">
+          <div className="field checkbox-field">
+            <input id="allcaps" type="checkbox" checked={draft.theme.allCaps ?? false} onChange={(e) => setTheme({ allCaps: e.target.checked })} />
+            <label htmlFor="allcaps">ALL-CAPS activity names</label>
           </div>
+          <div className="field">
+            <label htmlFor="cornerLabel">Corner label</label>
+            <input id="cornerLabel" value={draft.theme.cornerLabel ?? ''} maxLength={20} onChange={(e) => setTheme({ cornerLabel: e.target.value })} />
+          </div>
+        </div>
+      </section>
+
+      <section className="design-section" aria-labelledby="activity-details-heading">
+        <div className="section-heading compact">
+          <div><h3 id="activity-details-heading">Activity details</h3><p>Customize wording and scoring after you finish choosing activities.</p></div>
+        </div>
+        {draft.activities.length === 0 ? (
+          <div className="empty-state">No activities selected yet. Go back to Activities and choose at least five.</div>
+        ) : (
+          <div className="table-scroll">
+            <table className="activities">
+              <thead><tr><th>Activity</th><th>Points</th><th>Max</th><th>Bonus</th><th /></tr></thead>
+              <tbody>
+                {draft.activities.map((row, i) => (
+                  <tr key={row.uid}>
+                    <td><input aria-label={`Activity ${i + 1} name`} value={row.name} maxLength={90} onChange={(e) => setActivity(i, { name: e.target.value })} /></td>
+                    <td><input key={`${row.uid}-${draft.pointsRangeFormat}`} className="points" defaultValue={pointsLabel(row.points, draft.pointsRangeFormat)} onBlur={(e) => {
+                      const value = parsePointsInput(e.target.value);
+                      if (value !== null) setActivity(i, { points: value });
+                      else e.target.value = pointsLabel(row.points, draft.pointsRangeFormat);
+                    }} title='A number, a range like "1 to 6", or TBD' /></td>
+                    <td><input className="points" value={row.maxPoints ?? ''} onChange={(e) => {
+                      const value = Number(e.target.value);
+                      setActivity(i, { maxPoints: e.target.value === '' || !Number.isInteger(value) || value < 1 ? undefined : Math.min(value, 99) });
+                    }} placeholder="None" title="Cumulative cap; blank means once only" /></td>
+                    <td><input type="checkbox" checked={row.bonus} aria-label={`Bonus: ${row.name}`} onChange={(e) => setActivity(i, { bonus: e.target.checked })} /></td>
+                    <td><button className="icon-button" aria-label={`Remove ${row.name}`} onClick={() => patch({ activities: draft.activities.filter((_, j) => j !== i) })}>×</button></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      <section className="design-section" aria-labelledby="corners-heading">
+        <div className="section-heading compact"><div><h3 id="corners-heading">Corner boxes</h3><p>Optional awards or results boxes around the board.</p></div></div>
+        <div className="stacked-fields">
+          {draft.cornerBoxes.map((label, i) => (
+            <div className="row" key={i}>
+              <input value={label} aria-label={`Corner box ${i + 1}`} maxLength={40} onChange={(e) => patch({ cornerBoxes: draft.cornerBoxes.map((x, j) => (j === i ? e.target.value : x)) })} />
+              <button className="icon-button" aria-label={`Remove corner box ${i + 1}`} onClick={() => patch({ cornerBoxes: draft.cornerBoxes.filter((_, j) => j !== i) })}>×</button>
+            </div>
+          ))}
+        </div>
+        {draft.cornerBoxes.length < 4 && <button className="secondary" onClick={() => patch({ cornerBoxes: [...draft.cornerBoxes, 'NEW BOX'] })}>+ Corner box</button>}
+      </section>
+
+      <section className="design-section" aria-labelledby="rules-heading">
+        <div className="section-heading compact"><div><h3 id="rules-heading">Rules</h3><p>Keep the honor-system framing or add instructions for your group.</p></div></div>
+        <div className="field rules-title-field">
+          <label htmlFor="rulesTitle">Rules title</label>
+          <input id="rulesTitle" value={draft.rulesTitle} maxLength={80} onChange={(e) => patch({ rulesTitle: e.target.value })} placeholder="GAME RULES:" />
+        </div>
+        <div className="rules-content-shell">
+          <div className="rules-toolbar" aria-label="Rules formatting">
+            <button className="ghost compact-button" type="button" aria-label="Bold" onMouseDown={(event) => event.preventDefault()} onClick={() => formatRules('bold')}><strong>B</strong></button>
+            <button className="ghost compact-button" type="button" aria-label="Bulleted list" onMouseDown={(event) => event.preventDefault()} onClick={() => formatRules('bullets')}>• List</button>
+            <span>Supports bold headings and simple lists.</span>
+          </div>
+          <label className="sr-only" htmlFor="rulesContent">Rules content</label>
           <textarea
-            value={r.text}
-            maxLength={300}
-            onChange={(e) => patch({ rules: draft.rules.map((x, j) => (j === i ? { ...x, text: e.target.value } : x)) })}
+            ref={rulesEditor}
+            id="rulesContent"
+            value={draft.rulesContent}
+            maxLength={50000}
+            onChange={(event) => patch({ rulesContent: event.target.value })}
+            placeholder="Add the rules, notes, or agreement for this board."
           />
         </div>
-      ))}
-      {draft.rules.length < 12 && (
-        <button className="ghost" onClick={() => patch({ rules: [...draft.rules, { text: 'New rule' }] })}>+ Rule</button>
-      )}
-      <div className="field">
-        <label htmlFor="footnote">Footnote (optional)</label>
-        <input id="footnote" value={draft.footnote} maxLength={200} onChange={(e) => patch({ footnote: e.target.value })} />
-      </div>
+      </section>
 
-      <h2>Export</h2>
-      <div className="row">
-        <button className="primary" disabled={board.status !== 'ready' || busy !== null || !buffers} onClick={() => doExport('pdf')}>
-          {busy === 'pdf' ? 'Rendering…' : 'Download PDF (print quality)'}
-        </button>
-        <button className="primary" disabled={board.status !== 'ready' || busy !== null || !buffers} onClick={() => doExport('png')}>
-          {busy === 'png' ? 'Rendering…' : `Download PNG (${pngPlan.dpi} DPI)`}
-        </button>
-      </div>
-      {note && <div className="problems">{note}</div>}
+      <section className="design-section export-section" aria-labelledby="export-heading">
+        <div className="section-heading compact"><div><h3 id="export-heading">Export</h3><p>SVG and PDF stay sharp at any poster size. PNG is best for a quick preview.</p></div></div>
+        <div className="export-options">
+          <button className="export-card recommended" disabled={board.status !== 'ready' || busy !== null || !buffers} onClick={() => doExport('svg')}>
+            <span className="export-kicker">Recommended</span>
+            <strong>{busy === 'svg' ? 'Preparing…' : 'Download SVG'}</strong>
+            <span>Vector artwork for the sharpest large-format output.</span>
+          </button>
+          <button className="export-card" disabled={board.status !== 'ready' || busy !== null || !buffers} onClick={() => doExport('pdf')}>
+            <span className="export-kicker">Print shop ready</span>
+            <strong>{busy === 'pdf' ? 'Rendering…' : 'Download PDF'}</strong>
+            <span>Vector-quality document for professional printing.</span>
+          </button>
+          <button className="export-card preview-export" disabled={board.status !== 'ready' || busy !== null || !buffers} onClick={() => doExport('png')}>
+            <span className="export-kicker">Preview only</span>
+            <strong>{busy === 'png' ? 'Rendering…' : `Download PNG (${pngPlan.dpi} DPI)`}</strong>
+            <span>Raster image limited by your browser and likely to pixelate at full poster size.</span>
+          </button>
+        </div>
+        {note && <div className="problems">{note}</div>}
+      </section>
+
+      <div className="step-footer"><button className="ghost" onClick={() => setStep(1)}>Back to activities</button><span /></div>
     </div>
   );
 }

@@ -25,17 +25,25 @@ if (typeof globalThis.window === 'undefined') {
 }
 
 const { useWizardStore } = await import('../../src/store/wizardStore');
+const { createJesse2017Draft } = await import('../../src/content/occasions');
 
 describe('wizardStore', () => {
   beforeEach(() => {
     useWizardStore.getState().reset();
   });
 
-  it('starts with a renderable default draft and step 0', () => {
+  it('starts with a family Kids Weekend board and no selected activities', () => {
     const s = useWizardStore.getState();
     expect(s.step).toBe(0);
-    expect(s.draft.players.length).toBeGreaterThanOrEqual(8);
-    expect(s.draft.activities.length).toBeGreaterThanOrEqual(10);
+    expect(s.draft.title).toBe('Kids Weekend');
+    expect(s.draft.honoree).toBe('');
+    expect(s.draft.players).toEqual([
+      'Bo', 'Bobby', 'Brett', 'Coco', 'Eleanor', 'Hunter', 'Jack', 'Jess', 'Kate', 'Kaz',
+      'Mary', 'Nona', 'Rachel', 'SG', 'Shay Shay', 'Steven',
+    ]);
+    expect(s.draft.activities).toEqual([]);
+    expect(s.draft.libraryOccasion).toBe('kids-weekend');
+    expect(s.draft.posterSize).toBe('24x36');
   });
 
   it('patches the draft immutably', () => {
@@ -46,7 +54,39 @@ describe('wizardStore', () => {
     expect(before).not.toBe(after);
   });
 
+  it('replaces a draft atomically', () => {
+    const replacement = structuredClone(useWizardStore.getState().draft);
+    replacement.honoree = 'Jesse';
+    replacement.players = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+    useWizardStore.getState().replaceDraft(replacement);
+    expect(useWizardStore.getState().draft).toBe(replacement);
+    expect(useWizardStore.getState().draft.honoree).toBe('Jesse');
+  });
+
   it('persists via the storage key with a schema version', () => {
-    expect(useWizardStore.persist.getOptions().name).toBe('bachelor-board-v2');
+    expect(useWizardStore.persist.getOptions().name).toBe('game-board-v5');
+  });
+
+  it('backfills fields missing from a legacy persisted draft', async () => {
+    const legacy = structuredClone(useWizardStore.getState().draft) as Record<string, unknown>;
+    delete legacy.pointsRangeFormat;
+    delete legacy.rulesTitle;
+    delete legacy.rulesContent;
+    localStorage.setItem('game-board-v5', JSON.stringify({ state: { draft: legacy, step: 1 }, version: 0 }));
+    await useWizardStore.persist.rehydrate();
+    const draft = useWizardStore.getState().draft;
+    expect(draft.pointsRangeFormat).toBe('words');
+    expect(draft.rulesTitle).toBe('GAME RULES:');
+    expect(draft.rulesContent).toMatch(/HONOR SYSTEM/);
+  });
+
+  it('persists the complete atomically replaced occasion draft', () => {
+    useWizardStore.getState().replaceDraft(createJesse2017Draft());
+    const saved = JSON.parse(localStorage.getItem('game-board-v5')!) as { state: { draft: Record<string, unknown> } };
+    expect(saved.state.draft.honoree).toBe('JESSE CORDELL MADDOX, III');
+    expect(saved.state.draft.players).toHaveLength(30);
+    expect(saved.state.draft.activities).toHaveLength(37);
+    expect(saved.state.draft.rulesTitle).toBe('');
+    expect(saved.state.draft.rulesContent).toContain('SECTION 6. TERM');
   });
 });

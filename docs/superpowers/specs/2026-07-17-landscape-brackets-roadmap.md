@@ -12,7 +12,7 @@ Jesse's real 2017 bachelor party board (`~/Downloads/BACHELOR_BRACKETS.pdf`) is 
 
 ## Reference board anatomy (what we're matching)
 
-Landscape, three columns:
+Landscape, three columns, on a 60×48in (5:4) source artboard:
 - **Left rail:** four stacked single-elimination **tournament brackets** — Beer Pong (teams of 2), Ping Pong (individual), Pool (individual), Rock Paper Scissors. Blank seed slots + connector lines feeding a center "WINNER" box. Hand-filled during the party.
 - **Center:** "THE GAME" grid. "ACTIVITIES (DEADLINE FOR POINTS: 9PM SATURDAY)" sub-label. A single **"POINTS (MAX)"** column with inline notation like `2 (4)` (2 points each, cap 4), ranges `1-5` / `0-4`, and negatives `-1`. Player names ("VICTIMS") run at a **~45° diagonal**. A bottom **"TOTAL POINTS — 100"** target row.
 - **Right rail:** "THE AWFUL RESULTS:" with four labeled write-in boxes (GRAND CHAMPION; 2ND PLACE / VALIANT EFFORT; 3RD PLACE / WORTHY COMPETITOR; GRAND LOSER / R.I.P.), then a tall multi-section **rules block** (a legal-parody NDA with Sections 1–6).
@@ -39,6 +39,8 @@ Grounded in the current code (verified):
 ## Phased roadmap
 
 ### Phase 1 — Occasion presets + Jesse's 2017 data (ships on today's portrait engine)
+**Status:** data infrastructure implemented and verified on 2026-07-17. Human review rejected the portrait rendering as a design match; this phase is not template approval. See `docs/superpowers/specs/2026-07-17-phase1-occasion-presets.md`.
+
 **Goal:** the real data is loadable in the wizard immediately; a couple of cheap reusable schema touches.
 - Occasion-pack infrastructure (a `src/content/occasions/` registry the wizard's step-zero/preset picker reads).
 - The **"Jesse's Bachelor 2017"** pack: 30 players, 37 activities with exact points (Appendix A — `2 (4)` → `points:2, maxPoints:4`; `1-5` → `{min:1,max:5}`; `-1` → `-1`), the 4 results boxes as cornerBoxes, the Sections 1–6 rules transcribed verbatim as structured rules, teal theme, "THE BACHELOR WEEKEND OF …" title + date subtitle.
@@ -48,7 +50,7 @@ Grounded in the current code (verified):
 
 ### Phase 2 — Landscape foundation (the cross-cutting primitives)
 **Goal:** the engine can lay out and render a landscape page with diagonal names in the correct font. No brackets yet.
-- Add landscape `POSTER_SIZES` (e.g. `36x24`, `48x36`) with an orientation that flips region math where it assumes portrait.
+- Add landscape `POSTER_SIZES`, including the reference board's exact 5:4 ratio (`60x48`, with a smaller 5:4 option if useful), with an orientation that flips region math where it assumes portrait.
 - Bundle the free Gotham-alike (Montserrat weights, likely Regular/Medium/Bold/Black) and introduce a **small font registry** so `FontId` maps to family+weight+buffer in one place (`metrics.ts` + `svg.ts` FAMILY/WEIGHT + `fonts.ts` FontFace + pdf embed) — also satisfies the earlier Plan-4 "themes can pick fonts" goal.
 - Add **−45° rotation**: extend `TextRun.rotate` and `Placement` to include `-45`, the `placeText` math, the invariant budget (`invariants.ts`), and both renderers (SVG `transform="rotate(-45 …)"`, PDF `degrees(45)`). Diagonal text needs a diagonal bounding-box fit — the trickiest bit; unit-test the placement like the −90 work was.
 - **Done:** a landscape sample renders header + grid + diagonal player names in Montserrat, invariant-clean, PDF≈SVG.
@@ -81,7 +83,7 @@ Grounded in the current code (verified):
 **Activities (37) — name → points (maxPoints):**
 Eat the Mystery Thing (It's Edible, Mostly) → 1; Don't Sleep in a Bed → 2; Karaoke Serenade → 1 (max 2); Meal Cleanup → 1; Sleep After 3am → 2 (max 4); Sleep Before 7pm → −1; 100 Total Pullups → 2; 100 Pushups in 10 Minutes → 2; 69 Burpees → 2; Canoe Time Trials → range 1–5; Catch a Fish (Biggest) → 3 (max 4); Indoor Bball Shot → 2; Win Paintball Duel → 2 (max 4); Lose Paintball Duel → 1 (max 4); Throwing Axe Bullseye → 2; Win a Game of CanJam → 1; Win a Game of Stump → 1; Win Game of Chess → 1; Win Hide and Seek → 2 (max 4); 2 Shots in a Row → 2 (max 4); Beer Bong → 2 (max 4); Buffalo Someone → 1 (max 4); Spin Coin, Finish Beer First → 2 (max 4); Hit Target with Football → 1; Life Someone → 1 (max 4); Shotgun a Beer → 1 (max 3); Bleed (Involuntarily) → 1; Eat a (Really Hot) Pepper → 2; Jump in the Lake → 2 (max 4); Throw Up → 2 (max 8); Drink 2 Beers in Handcuffs → 2; Beer Pong Tournament → range 0–4; Ping Pong Tournament → range 0–4; Pool Tournament → range 0–4; RPS Tournament → range 0–4; Know the Name → 2; Bonus Awarded by Bachelor → range 1–5.
 
-**Totals target:** 100. **Results boxes:** Grand Champion; 2nd Place (Valiant Effort); 3rd Place (Worthy Competitor); Grand Loser (R.I.P.). **Tournaments (P4):** Beer Pong (teams of 2), Ping Pong, Pool, Rock Paper Scissors — all seeded from the 30 players.
+**Totals target:** 100. **Results boxes:** Grand Champion; 2nd Place (Valiant Effort); 3rd Place (Worthy Competitor); Grand Loser (R.I.P.). **Tournaments (P4):** blank hand-fill brackets matching the source: Beer Pong has 8 team slots (16-person capacity); Ping Pong, Pool, and Rock Paper Scissors each have 16 individual slots. They are not seeded directly from all 30 players.
 
 ## Appendix B — Rules
 

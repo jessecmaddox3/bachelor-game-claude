@@ -42,8 +42,25 @@ describe('boardSpecSchema', () => {
       ],
     });
     expect(pointsLabel(spec.activities[5]!.points)).toBe('1 to 6');
+    expect(pointsLabel(spec.activities[5]!.points, 'dash')).toBe('1-6');
     expect(pointsLabel(-3)).toBe('-3');
     expect(pointsLabel('TBD')).toBe('TBD');
+  });
+
+  it('accepts four corner boxes, compact ranges, and a totals target', () => {
+    const spec = makeSpec({
+      pointsRangeFormat: 'dash',
+      totalsTarget: 100,
+      cornerBoxes: ['FIRST', 'SECOND', 'THIRD', 'LAST'],
+    });
+    expect(spec.pointsRangeFormat).toBe('dash');
+    expect(spec.totalsTarget).toBe(100);
+    expect(spec.cornerBoxes).toHaveLength(4);
+  });
+
+  it('rejects renderer-unsafe color strings at the schema boundary', () => {
+    expect(() => makeSpec({ theme: { titleColor: 'red' } })).toThrow();
+    expect(() => makeSpec({ theme: { pointsColTint: '' } })).not.toThrow();
   });
 
   it('rejects inverted ranges', () => {

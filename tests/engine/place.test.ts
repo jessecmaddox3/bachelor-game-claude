@@ -63,3 +63,17 @@ describe('placeText: rotated -90', () => {
     expect(lineH).toBeLessThanOrEqual(0.6 + 0.01);
   });
 });
+
+describe('placeText: rotated -45', () => {
+  it('anchors left at the bottom-left, centers, and anchors right at the top-right', () => {
+    const box = { x: 1, y: 2, w: 4, h: 4 };
+    const left = placeText(run({ rotate: -45, align: 'left', box }), m);
+    const center = placeText(run({ rotate: -45, align: 'center', box }), m);
+    const right = placeText(run({ rotate: -45, align: 'right', box }), m);
+    expect(left.rotate).toBe(-45);
+    expect(left.x).toBeLessThan(center.x);
+    expect(center.x).toBeLessThan(right.x);
+    expect(left.y).toBeGreaterThan(center.y);
+    expect(center.y).toBeGreaterThan(right.y);
+  });
+});

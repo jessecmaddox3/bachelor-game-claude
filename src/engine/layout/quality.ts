@@ -14,6 +14,7 @@ const NEXT_SIZE: Record<PosterSizeId, PosterSizeId | null> = {
   '24x36': '36x48',
   '36x48': '48x72',
   '48x72': null,
+  '60x48': null,
 };
 
 export function gradeLayout(layout: GridLayout, spec: BoardSpec): QualityReport {

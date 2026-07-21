@@ -6,7 +6,7 @@ export interface Placement {
   x: number;
   y: number;
   /** Rotation about (x, y): 0, or -90 = reads bottom-to-top. */
-  rotate: 0 | -90;
+  rotate: 0 | -90 | -45;
   /** Measured advance width in inches (drives SVG textLength). */
   widthIn: number;
 }
@@ -33,6 +33,18 @@ export function placeText(t: TextRun, m: FontMetrics): Placement {
       : t.align === 'right' ? t.box.y + w
       : t.box.y + t.box.h;
     return { x, y, rotate: -90, widthIn: w };
+  }
+
+  if (t.rotate === -45) {
+    const c = Math.SQRT1_2;
+    const descent = lineH - ascent;
+    const dxMin = -ascent * c;
+    const dyMax = descent * c;
+    const extent = (w + lineH) * c;
+    const k = t.align === 'left' ? 0 : t.align === 'center' ? 0.5 : 1;
+    const x = t.box.x + k * (t.box.w - extent) - dxMin;
+    const y = t.box.y + t.box.h - k * (t.box.h - extent) - dyMax;
+    return { x, y, rotate: -45, widthIn: w };
   }
 
   const y = t.box.y + (t.box.h - lineH) / 2 + ascent;

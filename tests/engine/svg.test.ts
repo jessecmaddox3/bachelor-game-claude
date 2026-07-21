@@ -21,7 +21,7 @@ function fontBuffers() {
     const b = readFileSync(resolve(dir, n));
     return b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength) as ArrayBuffer;
   };
-  return { display: ab('ArchivoBlack-Regular.ttf'), body: ab('Lato-Regular.ttf'), bodyBold: ab('Lato-Bold.ttf') };
+  return { display: ab('ArchivoBlack-Regular.ttf'), body: ab('Lato-Regular.ttf'), bodyBold: ab('Lato-Bold.ttf'), landscape: ab('Montserrat-Regular.ttf'), landscapeBold: ab('Montserrat-Bold.ttf') };
 }
 
 describe('renderSvg', () => {
@@ -62,7 +62,7 @@ describe('renderSvg', () => {
   it('embeds fonts as data URIs only when asked', () => {
     expect(svgFor()).not.toContain('@font-face');
     const embedded = svgFor({}, { embedFonts: fontBuffers() });
-    expect((embedded.match(/@font-face/g) ?? []).length).toBe(3);
+    expect((embedded.match(/@font-face/g) ?? []).length).toBe(5);
     expect(embedded).toContain('data:font/ttf;base64,');
   });
 

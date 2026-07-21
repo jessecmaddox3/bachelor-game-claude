@@ -5,7 +5,7 @@ import type { GridLayout } from '../layout/gridSolver';
 import type { FontMetrics, FontId } from '../fonts/metrics';
 import type { Scene, Primitive } from './types';
 import type { Box } from '../geometry';
-import { fitSizePt, wrapToWidth, hardEllipsize } from '../layout/wrap';
+import { fitSizePt, fitWrappedText, wrapToWidth } from '../layout/wrap';
 import {
   CELL_PAD,
   POINTS_HEADER,
@@ -15,8 +15,16 @@ import {
   TOTALS_LABEL,
 } from '../layout/gridSolver';
 import { INK, GRID_LINE, PAGE_BG } from './colors';
+import { bodyLines, effectiveRules } from '../../content/rules';
+import { wrapStyledRuleLine, type StyledRulesLine } from '../rules/richText';
 
-export function composeScene(spec: BoardSpec, regions: Regions, layout: GridLayout, m: FontMetrics): Scene {
+export function composeScene(
+  spec: BoardSpec,
+  regions: Regions,
+  layout: GridLayout,
+  m: FontMetrics,
+  rulesPlan?: RulesPlan,
+): Scene {
   const prims: Primitive[] = [];
   prims.push({ kind: 'rect', box: { x: 0, y: 0, w: regions.pageW, h: regions.pageH }, fill: PAGE_BG });
 
@@ -25,7 +33,7 @@ export function composeScene(spec: BoardSpec, regions: Regions, layout: GridLayo
   if (regions.rail) composeRail(regions.rail, m, prims);
   composeGrid(spec, regions.grid, layout, m, prims);
   composeExtras(spec, regions.grid, layout, m, prims);
-  if (regions.rules) composeRules(spec, regions.rules, m, prims);
+  if (regions.rules) composeRules(spec, regions.rules, m, prims, rulesPlan);
 
   return { widthIn: regions.pageW, heightIn: regions.pageH, primitives: prims };
 }
@@ -93,20 +101,26 @@ function fittedLine(
 
 function composeHeader(spec: BoardSpec, regions: Regions, m: FontMetrics, prims: Primitive[]) {
   const h = regions.header;
-  // Single truthiness source: an empty-string subtitle behaves exactly like an
-  // absent one (2-row header, and the last row — the honoree — is never capped).
   const subtitle = spec.subtitle;
   const hasSubtitle = Boolean(subtitle);
-  const rows: Array<[string, number, FontId, string]> = subtitle
-    ? [
-        [spec.title, 0.5, 'display', spec.theme.titleColor],
-        [spec.honoree, 0.32, 'display', spec.theme.titleColor],
-        [subtitle, 0.18, 'bodyBold', spec.theme.accentColor],
-      ]
-    : [
-        [spec.title, 0.6, 'display', spec.theme.titleColor],
-        [spec.honoree, 0.4, 'display', spec.theme.titleColor],
-      ];
+  const hasHonoree = Boolean(spec.honoree);
+  const rows: Array<[string, number, FontId, string]> = hasHonoree
+    ? (subtitle
+        ? [
+            [spec.title, 0.5, 'display', spec.theme.titleColor],
+            [spec.honoree, 0.32, 'display', spec.theme.titleColor],
+            [subtitle, 0.18, 'bodyBold', spec.theme.accentColor],
+          ]
+        : [
+            [spec.title, 0.6, 'display', spec.theme.titleColor],
+            [spec.honoree, 0.4, 'display', spec.theme.titleColor],
+          ])
+    : (subtitle
+        ? [
+            [spec.title, 0.66, 'display', spec.theme.titleColor],
+            [subtitle, 0.34, 'bodyBold', spec.theme.accentColor],
+          ]
+        : [[spec.title, 1, 'display', spec.theme.titleColor]]);
 
   // Corner boxes occupy the header's right edge; keep the title rows clear
   // of them (they re-fit smaller automatically via fittedLine).
@@ -179,17 +193,20 @@ function composeGrid(spec: BoardSpec, grid: Box, L: GridLayout, m: FontMetrics, 
   // Rotated player names in the header band (L.playerNames: possibly-ellipsized,
   // same length as spec.players per the GridLayout contract)
   L.playerNames.forEach((name, i) => {
+    const box: Box = {
+      x: playersX + i * L.playerColW + CELL_PAD,
+      y: grid.y + CELL_PAD,
+      w: L.playerColW - 2 * CELL_PAD,
+      h: L.headerBandH - 2 * CELL_PAD,
+    };
+    const playerFloor = Math.min(L.bodyPt, 18);
+    const sizePt = fitSizePt(name, box.h, box.w, 'bodyBold', m, 18, playerFloor) ?? playerFloor;
     prims.push({
       kind: 'text',
-      box: {
-        x: playersX + i * L.playerColW + CELL_PAD,
-        y: grid.y + CELL_PAD,
-        w: L.playerColW - 2 * CELL_PAD,
-        h: L.headerBandH - 2 * CELL_PAD,
-      },
+      box,
       text: name,
       fontId: 'bodyBold',
-      sizePt: L.bodyPt,
+      sizePt,
       color: activityColor,
       align: 'left',
       rotate: -90,
@@ -239,46 +256,77 @@ function composeGrid(spec: BoardSpec, grid: Box, L: GridLayout, m: FontMetrics, 
 
   // Task labels (one TextRun per wrapped line), points values, max-points values
   spec.activities.forEach((a, r) => {
-    const lines = L.taskLines[r] ?? []; // per-activity by contract; ?? satisfies noUncheckedIndexedAccess
-    let ty = rowY(r) + (L.rowH - lines.length * lineH) / 2;
+    const taskBox: Box = {
+      x: grid.x + CELL_PAD,
+      y: rowY(r) + CELL_PAD,
+      w: L.taskColW - 2 * CELL_PAD,
+      h: L.rowH - 2 * CELL_PAD,
+    };
+    const fittedTask = fitWrappedText(a.name, taskBox.w, taskBox.h, 'body', m, {
+      minPt: L.bodyPt,
+      maxPt: 20,
+      maxLines: 8,
+    });
+    const lines = fittedTask?.lines ?? (L.taskLines[r] ?? []);
+    const taskPt = fittedTask?.pt ?? L.bodyPt;
+    const taskLineH = m.lineHeightIn('body', taskPt);
+    let ty = rowY(r) + (L.rowH - lines.length * taskLineH) / 2;
     for (const line of lines) {
       prims.push({
         kind: 'text',
-        box: { x: grid.x + CELL_PAD, y: ty, w: L.taskColW - 2 * CELL_PAD, h: lineH },
+        box: { x: taskBox.x, y: ty, w: taskBox.w, h: taskLineH },
         text: line,
         fontId: 'body',
-        sizePt: L.bodyPt,
+        sizePt: taskPt,
         color: activityColor,
         align: 'left',
       });
-      ty += lineH;
+      ty += taskLineH;
     }
+    const pointsText = pointsLabel(a.points, spec.pointsRangeFormat);
+    const pointsBox: Box = {
+      x: pointsX + CELL_PAD,
+      y: rowY(r) + CELL_PAD,
+      w: L.pointsColW - 2 * CELL_PAD,
+      h: L.rowH - 2 * CELL_PAD,
+    };
+    const pointsPt = fitSizePt(pointsText, pointsBox.w, pointsBox.h, 'bodyBold', m, 20, L.bodyPt) ?? L.bodyPt;
+    const pointsLineH = m.lineHeightIn('bodyBold', pointsPt);
     prims.push({
       kind: 'text',
       box: {
-        x: pointsX + CELL_PAD,
-        y: rowY(r) + (L.rowH - lineH) / 2,
-        w: L.pointsColW - 2 * CELL_PAD,
-        h: lineH,
+        x: pointsBox.x,
+        y: rowY(r) + (L.rowH - pointsLineH) / 2,
+        w: pointsBox.w,
+        h: pointsLineH,
       },
-      text: pointsLabel(a.points),
+      text: pointsText,
       fontId: 'bodyBold',
-      sizePt: L.bodyPt,
+      sizePt: pointsPt,
       color: INK,
       align: 'center',
     });
     if (a.maxPoints !== undefined) {
+      const maxText = String(a.maxPoints);
+      const maxBox: Box = {
+        x: maxX + CELL_PAD,
+        y: rowY(r) + CELL_PAD,
+        w: L.maxPointsColW - 2 * CELL_PAD,
+        h: L.rowH - 2 * CELL_PAD,
+      };
+      const maxPt = fitSizePt(maxText, maxBox.w, maxBox.h, 'bodyBold', m, 20, L.bodyPt) ?? L.bodyPt;
+      const maxLineH = m.lineHeightIn('bodyBold', maxPt);
       prims.push({
         kind: 'text',
         box: {
-          x: maxX + CELL_PAD,
-          y: rowY(r) + (L.rowH - lineH) / 2,
-          w: L.maxPointsColW - 2 * CELL_PAD,
-          h: lineH,
+          x: maxBox.x,
+          y: rowY(r) + (L.rowH - maxLineH) / 2,
+          w: maxBox.w,
+          h: maxLineH,
         },
-        text: String(a.maxPoints),
+        text: maxText,
         fontId: 'bodyBold',
-        sizePt: L.bodyPt,
+        sizePt: maxPt,
         color: INK,
         align: 'center',
       });
@@ -317,7 +365,7 @@ function composeGrid(spec: BoardSpec, grid: Box, L: GridLayout, m: FontMetrics, 
     prims.push({
       kind: 'text',
       box: { x: pointsX + CELL_PAD, y: rowY(r) + (L.rowH - lineH) / 2, w: L.pointsColW - 2 * CELL_PAD, h: lineH },
-      text: '-5 to 5',
+      text: pointsLabel({ min: -5, max: 5 }, spec.pointsRangeFormat),
       fontId: 'bodyBold',
       sizePt: L.bodyPt,
       color: INK,
@@ -328,15 +376,33 @@ function composeGrid(spec: BoardSpec, grid: Box, L: GridLayout, m: FontMetrics, 
   // Totals row: heavy top border + label
   const totY = rowY(L.displayRows);
   prims.push({ kind: 'line', x1: grid.x, y1: totY, x2: grid.x + grid.w, y2: totY, color: INK, widthIn: 0.03 });
+  const totalsBox: Box = { x: grid.x + CELL_PAD, y: totY + CELL_PAD, w: L.taskColW - 2 * CELL_PAD, h: L.rowH - 2 * CELL_PAD };
+  const totalsPt = fitSizePt(TOTALS_LABEL, totalsBox.w, totalsBox.h, 'bodyBold', m, 20, L.bodyPt) ?? L.bodyPt;
+  const totalsLineH = m.lineHeightIn('bodyBold', totalsPt);
   prims.push({
     kind: 'text',
-    box: { x: grid.x + CELL_PAD, y: totY + (L.rowH - lineH) / 2, w: L.taskColW - 2 * CELL_PAD, h: lineH },
+    box: { x: totalsBox.x, y: totY + (L.rowH - totalsLineH) / 2, w: totalsBox.w, h: totalsLineH },
     text: TOTALS_LABEL,
     fontId: 'bodyBold',
-    sizePt: L.bodyPt,
+    sizePt: totalsPt,
     color: accentColor,
     align: 'left',
   });
+  if (spec.totalsTarget !== undefined) {
+    const targetText = String(spec.totalsTarget);
+    const targetBox: Box = { x: pointsX + CELL_PAD, y: totY + CELL_PAD, w: L.pointsColW - 2 * CELL_PAD, h: L.rowH - 2 * CELL_PAD };
+    const targetPt = fitSizePt(targetText, targetBox.w, targetBox.h, 'bodyBold', m, 20, L.bodyPt) ?? L.bodyPt;
+    const targetLineH = m.lineHeightIn('bodyBold', targetPt);
+    prims.push({
+      kind: 'text',
+      box: { x: targetBox.x, y: totY + (L.rowH - targetLineH) / 2, w: targetBox.w, h: targetLineH },
+      text: targetText,
+      fontId: 'bodyBold',
+      sizePt: targetPt,
+      color: accentColor,
+      align: 'center',
+    });
+  }
 
   // Grid lines
   const xs = [grid.x, pointsX, maxX];
@@ -404,80 +470,161 @@ function composeExtras(spec: BoardSpec, grid: Box, L: GridLayout, m: FontMetrics
   }
 }
 
-function composeRules(spec: BoardSpec, box: Box, m: FontMetrics, prims: Primitive[]) {
-  if (spec.rules.length === 0 && !spec.footnote) return;
-  const accent = spec.theme.accentColor;
+type RuleBodyItem = { kind: 'line'; line: StyledRulesLine } | { kind: 'gap' };
+type RuleBlock = { headingLines: string[]; body: RuleBodyItem[]; h: number; ellipsized: boolean };
+export type RulesPlan = {
+  pt: number;
+  lineH: number;
+  headH: number;
+  colW: number;
+  bodyTop: number;
+  placed: Array<{ col: number; y: number; block: RuleBlock }>;
+  footLines: string[];
+  footH: number;
+  fLineH: number;
+};
+
+/**
+ * Measure every rules word before composition. Returning null makes the build
+ * honestly infeasible instead of silently truncating or dropping later rules.
+ */
+const RULE_PARAGRAPH_GAP = 0.04;
+
+export function planRules(spec: BoardSpec, box: Box, m: FontMetrics): RulesPlan | null {
   const PAD = 0.2;
-  const titleH = 0.28;
-  // Footnote strip height derived from its actual metrics: 2 wrapped lines at
-  // 7pt (wrapToWidth's maxLines cap) plus a small pad, so a 2-line footnote
-  // can never overshoot the strip bottom.
+  const titleH = spec.rulesTitle ? 0.28 : 0;
   const fLineH = m.lineHeightIn('body', 7);
-  const footH = spec.footnote ? fLineH * 2 + 0.06 : 0;
+  const footResult = spec.footnote
+    ? wrapToWidth(spec.footnote, box.w - 2 * PAD, 'body', 7, m, 10_000)
+    : { lines: [], ellipsized: false };
+  if (footResult.ellipsized) return null;
+  const footLines = footResult.lines;
+  const footH = footLines.length > 0 ? fLineH * footLines.length + 0.06 : 0;
   const bodyTop = box.y + PAD / 2 + titleH;
   const bodyH = box.h - PAD - titleH - footH;
-  const cols = spec.rules.length > 6 ? 3 : spec.rules.length > 2 ? 2 : 1;
+  const rules = effectiveRules(spec);
+  const cols = rules.length > 6 ? 3 : rules.length > 2 ? 2 : 1;
   const colGap = 0.3;
   const colW = (box.w - 2 * PAD - (cols - 1) * colGap) / cols;
 
+  if (bodyH <= 0) return null;
+
+  for (let pt = 9; pt >= 5; pt -= 0.5) {
+    const lineH = m.lineHeightIn('body', pt);
+    const headH = m.lineHeightIn('bodyBold', pt);
+    const blocks: RuleBlock[] = rules.map((r) => {
+      const headingText = r.heading
+        ? `${r.heading}${spec.rulesHeadingSuffix === 'colon' ? ':' : ''}`
+        : '';
+      const heading = headingText
+        ? wrapToWidth(headingText, colW, 'bodyBold', pt, m, 10_000)
+        : { lines: [], ellipsized: false };
+      const body: RuleBodyItem[] = [];
+      let bodyEllipsized = false;
+      for (const sourceLine of bodyLines(r)) {
+        const wrapped = wrapStyledRuleLine(sourceLine, colW, 'body', 'bodyBold', pt, m);
+        if (!wrapped) {
+          bodyEllipsized = true;
+          continue;
+        }
+        body.push(...wrapped.map((line): RuleBodyItem => ({ kind: 'line', line })));
+      }
+      if (body.at(-1)?.kind === 'gap') body.pop();
+      return {
+        headingLines: heading.lines,
+        body,
+        h:
+          heading.lines.length * headH
+          + body.reduce((sum, item) => sum + (item.kind === 'gap' ? RULE_PARAGRAPH_GAP : lineH), 0)
+          + 0.08,
+        ellipsized: heading.ellipsized || bodyEllipsized,
+      };
+    });
+    if (blocks.some((block) => block.ellipsized)) continue;
+    const colHeights = Array.from({ length: cols }, () => 0);
+    const placed: RulesPlan['placed'] = [];
+    let ok = true;
+    for (const block of blocks) {
+      const col = colHeights.indexOf(Math.min(...colHeights));
+      if (colHeights[col]! + block.h > bodyH) {
+        ok = false;
+        break;
+      }
+      placed.push({ col, y: colHeights[col]!, block });
+      colHeights[col]! += block.h;
+    }
+    if (ok) return { pt, lineH, headH, colW, bodyTop, placed, footLines, footH, fLineH };
+  }
+  return null;
+}
+
+function composeRules(
+  spec: BoardSpec,
+  box: Box,
+  m: FontMetrics,
+  prims: Primitive[],
+  precomputed?: RulesPlan,
+) {
+  const rules = effectiveRules(spec);
+  if (rules.length === 0 && !spec.footnote) return;
+  const accent = spec.theme.accentColor;
+  const PAD = 0.2;
+  const titleH = spec.rulesTitle ? 0.28 : 0;
+  const plan = precomputed ?? planRules(spec, box, m);
+  // buildBoard preflights this exact plan and returns an infeasible result.
+  // A direct internal caller must never get a silently incomplete Scene.
+  if (!plan) throw new Error('composeScene called with rules that do not fit');
+
   // "GAME RULES:" strip title — only when there are rules to head (a
   // footnote-only strip must not render an orphaned heading).
-  if (spec.rules.length > 0) {
+  if (rules.length > 0 && spec.rulesTitle) {
     prims.push({
       kind: 'text',
       box: { x: box.x + PAD, y: box.y + PAD / 2, w: box.w - 2 * PAD, h: titleH },
-      text: 'GAME RULES:',
+      text: spec.rulesTitle,
       fontId: 'bodyBold',
-      sizePt: fitSizePt('GAME RULES:', box.w - 2 * PAD, titleH, 'bodyBold', m, 14, 7) ?? 7,
+      sizePt: fitSizePt(spec.rulesTitle, box.w - 2 * PAD, titleH, 'bodyBold', m, 14, 7) ?? 7,
       color: accent,
       align: 'left',
     });
   }
 
-  // Fit pass: find the largest pt (9 -> 5) where every rule block fits its column.
-  for (let pt = 9; pt >= 5; pt -= 0.5) {
-    const lineH = m.lineHeightIn('body', pt);
-    const headH = m.lineHeightIn('bodyBold', pt);
-    // Wrap every block at this size; distribute round-robin into columns by cumulative height.
-    const blocks = spec.rules.map((r) => {
-      const heading = r.heading ? hardEllipsize(`${r.heading}:`, colW, 'bodyBold', pt, m).text : null;
-      const lines = wrapToWidth(r.text, colW, 'body', pt, m, 6).lines;
-      return { heading, lines, h: (heading ? headH : 0) + lines.length * lineH + 0.08 };
-    });
-    const colHeights = Array.from({ length: cols }, () => 0);
-    const placed: Array<{ col: number; y: number; block: (typeof blocks)[number] }> = [];
-    let ok = true;
-    for (const block of blocks) {
-      // Greedy: shortest column first keeps columns balanced.
-      const col = colHeights.indexOf(Math.min(...colHeights));
-      if (colHeights[col]! + block.h > bodyH) { ok = false; break; }
-      placed.push({ col, y: colHeights[col]!, block });
-      colHeights[col]! += block.h;
-    }
-    if (!ok && pt > 5) continue;
-    // Render (at 5pt render whatever fits; blocks that would exceed the column are dropped
-    // — unreachable within schema caps, mirrors the pre-existing floor-fallback philosophy).
-    for (const { col, y, block } of placed) {
-      const x = box.x + PAD + col * (colW + colGap);
-      let cy = bodyTop + y;
-      if (block.heading) {
-        prims.push({ kind: 'text', box: { x, y: cy, w: colW, h: headH }, text: block.heading, fontId: 'bodyBold', sizePt: pt, color: accent, align: 'left' });
-        cy += headH;
+  const colGap = 0.3;
+  for (const { col, y, block } of plan.placed) {
+      const x = box.x + PAD + col * (plan.colW + colGap);
+      let cy = plan.bodyTop + y;
+      for (const headingLine of block.headingLines) {
+        prims.push({ kind: 'text', box: { x, y: cy, w: plan.colW, h: plan.headH }, text: headingLine, fontId: 'bodyBold', sizePt: plan.pt, color: accent, align: 'left' });
+        cy += plan.headH;
       }
-      for (const line of block.lines) {
-        prims.push({ kind: 'text', box: { x, y: cy, w: colW, h: lineH }, text: line, fontId: 'body', sizePt: pt, color: INK, align: 'left' });
-        cy += lineH;
+      for (const item of block.body) {
+        if (item.kind === 'gap') {
+          cy += RULE_PARAGRAPH_GAP;
+        } else {
+          if (item.line.bullet) {
+            prims.push({ kind: 'text', box: { x, y: cy, w: item.line.indentIn, h: plan.lineH }, text: '•', fontId: 'body', sizePt: plan.pt, color: INK, align: 'left' });
+          }
+          for (const segment of item.line.segments) {
+            prims.push({
+              kind: 'text',
+              box: { x: x + segment.x, y: cy, w: segment.w + 0.001, h: plan.lineH },
+              text: segment.text,
+              fontId: segment.bold ? 'bodyBold' : 'body',
+              sizePt: plan.pt,
+              color: INK,
+              align: 'left',
+            });
+          }
+          cy += plan.lineH;
+        }
       }
-    }
-    break;
   }
 
-  if (spec.footnote) {
-    const fLines = wrapToWidth(spec.footnote, box.w - 2 * PAD, 'body', 7, m, 2);
-    let fy = box.y + box.h - footH;
-    for (const line of fLines.lines) {
-      prims.push({ kind: 'text', box: { x: box.x + PAD, y: fy, w: box.w - 2 * PAD, h: fLineH }, text: line, fontId: 'body', sizePt: 7, color: accent, align: 'left' });
-      fy += fLineH;
+  if (plan.footLines.length > 0) {
+    let fy = box.y + box.h - plan.footH;
+    for (const line of plan.footLines) {
+      prims.push({ kind: 'text', box: { x: box.x + PAD, y: fy, w: box.w - 2 * PAD, h: plan.fLineH }, text: line, fontId: 'body', sizePt: 7, color: accent, align: 'left' });
+      fy += plan.fLineH;
     }
   }
 }

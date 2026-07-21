@@ -1,62 +1,35 @@
 # Handoff
 
-- Original goal: Rebuild Jesse's 2017 bachelor game board as a shelf-stable
-  names-plus-activities poster generator, then use the challenge library as the
-  foundation for a private friend-and-family challenge game. Immediate focus:
-  make the wizard UI genuinely good (it currently "sucks" per Jesse) and build
-  out real event-specific activity content, then get it live on Vercel.
+- Original goal: Rebuild Jesse's 2017 bachelor game board as a shelf-stable poster generator, simplify the builder from real-world feedback, and preserve the challenge research for a three-brother mobile web game.
 
-- Current phase: **Planning complete for the Setup + Activities redesign.**
-  Claude (Opus, 2026-07-20) wrote a full build handoff for Codex to execute.
-  Next actor is **Codex**. Two new planning docs are the source of truth:
-  - `docs/product/2026-07-20-setup-and-activities-redesign-HANDOFF.md` — the
-    build spec (interaction fixes, activities flow, visual design pass, build
-    order, guardrails, deploy path, verify).
-  - `docs/product/2026-07-20-activity-seed-library.md` — ~219 event-specific seed
-    challenges across 8 occasions (adds a new `beach-trip` occasion), each with
-    category + default points + difficulty + adultOnly, ready to wire into
-    `src/content/activities.ts`.
+- Current phase: The condensed gameboard release is live at `https://jessemaddox.com/gameboard`. Challenge Lab Tasks 1 through 5 are complete in `/Users/jesse/claude/challenge-game`; Task 6 is next.
 
-- Done (this session): Confirmed Vercel migration is complete and healthy —
-  `jessemaddox.com/gameboard` returns 200, Vercel auto-deploys `main`, the old
-  Netlify "credits exceeded" block is gone (the improved picker is already live).
-  Generated the full per-occasion seed library (8 parallel agents). Wrote the two
-  planning docs above. Committed only those docs.
+- Done:
+  - New boards start as `Kids Weekend` with the sorted family roster and no activities.
+  - Setup now contains occasion, Title, Subtitle, and Participants only. Number ornaments were removed, occasion labels use capitalized emoji copy, wide layouts use four occasion columns, and added or edited participants stay alphabetized.
+  - The complete historical board remains available as `My Bachelor Party Weekend`, with confirmation before it replaces any customized draft field.
+  - Activity selection uses a compact two-column checkbox browser, occasion-ranked ideas, selected-only filtering, `Clear all`, and a lightweight custom-idea form. Wording and points editing moved to Design.
+  - Poster size moved to Design. New-board export filenames fall back to Title when no legacy honoree exists.
+  - Rules use one title and one safe rich-text-lite document. Paragraphs, paired bold spans, and measured bullets render in portrait and landscape, including hanging indents and honest fit failures.
+  - Portrait and landscape cell text is measured independently. Sparse boards grow type, long unspaced labels wrap without dropped characters, and an unfittable landscape returns a generic content-fit message instead of an overflowing scene.
+  - Full verification passed: 23 test files, 225 tests, TypeScript, Vite production build, and source `git diff --check`.
+  - Independent re-review confirmed all original Important findings were fixed. A final wording defect in the landscape fit error was then fixed and covered.
+  - Published website commit `7343189`; live HTML serves `assets/index-Mv37He1A.js`, and HTTP checks confirmed the expected new UI copy.
+  - Challenge Lab Task 4 is accepted at `0e14ba0`. Task 5 identity and synchronization is accepted at `41368c3`, with 110 tests, typecheck, production and API builds, and a clean worktree.
 
-- Pending (Codex to build, per the redesign handoff, in this order):
-  1. Data: add `beach-trip` occasion; port the seed library into
-     `src/content/activities.ts`; update `RECOMMENDED_ACTIVITY_IDS`; keep
-     `tests/content/content.test.ts` invariants green.
-  2. Store: fix `wizardStore.ts` defaults so a fresh board is empty/sane; make
-     occasion a single early choice.
-  3. Setup step: rebuild player entry as chips + Enter-to-add; move occasion to
-     top; make preset loading clearly opt-in (no filler rows to delete).
-  4. Activities step: card UI + category grouping; inherit occasion from Setup.
-  5. Visual pass: blue design-system token block in `index.css`; restyle both
-     steps + wizard chrome + Design step.
-  6. Verify, rebuild site output, push `jessemaddox.com` to deploy.
+- Pending:
+  - Challenge Lab Task 6: build the five-category and five-challenge seeding flow.
+  - Challenge Lab Task 10 must route production writes through Apps Script `LockService` before deployment because cross-request compare-and-swap remains intentionally deferred.
+  - Perform a human visual pass in a normal browser when convenient. The in-app browser runtime was unavailable in this session, so release verification used automated layout invariants, production builds, and live HTTP checks.
 
-- Changed files (this session): NEW `docs/product/2026-07-20-*` (2 files) and
-  updated `HANDOFF.md`. NOTE: the whole app remains uncommitted from prior Codex
-  work (its sandbox couldn't write `.git`) — do NOT `git add -A`; stage narrowly.
+- Changed files: Gameboard UI, defaults, activity catalog, historical preset, safe rules parser and renderer, adaptive layout helpers, export naming, regression tests, July 2026 product research, approved design specs, and implementation plans. Challenge Lab Task 5 changed its API client, Zustand store, identity gate, status banner, App integration, and tests in the separate `challenge-game` repo.
 
-- Verify command: `git diff --check && npx tsc --noEmit && npm test && npm run build`.
-  Baseline before this session: typecheck clean, 180 tests pass, Vite build clean
-  (existing chunk-size warning OK). Site rebuild: `npx vite build --base=/projects/gameboard/`.
+- Verify command: In this repo run `npm test && npm run build && git diff --check`. For the live release run `curl -fsS https://jessemaddox.com/gameboard | rg 'index-Mv37He1A.js'`. In `/Users/jesse/claude/challenge-game`, run `npm test && npm run typecheck && npm run build`.
 
-- Current risks / known issues: Large uncommitted app diff predates this session;
-  Codex should review/commit it as part of "cleaning the place up." Seed content
-  has minor cross-occasion duplication by design (occasion-scoped); dedupe only on
-  identical IDs. Adult-only rows must never land in kids-weekend defaults.
+- Current risks / known issues: The local gameboard worktree still appears dirty because this environment cannot write the source repository's Git metadata. The same verified files are saved to GitHub through an isolated writable clone. Vite reports non-blocking large-chunk warnings. Tests print a pre-existing non-blocking Node `--localstorage-file` warning.
 
-- Do not repeat: Do not rebuild the board engine, renderer, PDF/SVG export, or
-  fonts pipeline — scope is the wizard UI + activity content only. Do not build
-  the multiplayer "lobbing challenges" game here — it's a separate later project
-  (`docs/product/2026-07-20-challenge-chain-mvp.md`). Do not reintroduce risky
-  2017 legacy rows into generic/default sets.
+- Do not repeat: Do not rebuild Tasks 1 through 5 of Challenge Lab. Do not remove the historical preset or flatten its source-faithful landscape hierarchy. Do not publish from the dirty local `jessemaddox.com` checkout; use an isolated clone and stage only `projects/gameboard`.
 
-- Suggested next step (Codex): Read the redesign handoff + seed library, then
-  execute the build order above. Deploy via the site repo → Vercel path when done.
+- Suggested next step: Implement and review Challenge Lab Task 6, then let Jesse and his brothers use the seeding flow before locking later weekly mechanics.
 
-- Last tool + date: Claude Opus (planning + content generation via 8 sub-agents),
-  2026-07-20. Next: Codex build.
+- Last tool + date: Codex with bounded implementation and read-only review agents, 2026-07-21.

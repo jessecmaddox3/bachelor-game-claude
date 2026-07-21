@@ -15,7 +15,7 @@ export interface TextRun {
   sizePt: number;
   color: string;
   align: 'left' | 'center' | 'right';
-  rotate?: -90;
+  rotate?: -90 | -45;
 }
 
 /**

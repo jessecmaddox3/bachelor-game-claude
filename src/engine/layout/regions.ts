@@ -50,7 +50,7 @@ export function partitionRegions(spec: BoardSpec): Regions {
   const content: Box = { x: margin, y: margin, w: pageW - 2 * margin, h: pageH - 2 * margin };
 
   const headerH = clamp(pageH * 0.11, 2.2, 6);
-  const rulesH = spec.rules.length > 0 || spec.footnote !== undefined ? clamp(pageH * 0.07, 1.5, 4) : 0;
+  const rulesH = spec.rulesContent.trim() || spec.rules.length > 0 || Boolean(spec.footnote) ? clamp(pageH * 0.07, 1.5, 4) : 0;
 
   const bodyTop = content.y + headerH + REGION_GAP;
   const bodyBottom = content.y + content.h - (rulesH ? rulesH + REGION_GAP : 0);

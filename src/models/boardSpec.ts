@@ -5,6 +5,7 @@ export const POSTER_SIZES = {
   '24x36': { w: 24, h: 36 },
   '36x48': { w: 36, h: 48 },
   '48x72': { w: 48, h: 72 },
+  '60x48': { w: 60, h: 48 },
 } as const;
 
 export type PosterSizeId = keyof typeof POSTER_SIZES;
@@ -20,15 +21,19 @@ export const pointsValueSchema = z.union([
 ]);
 export type PointsValue = z.infer<typeof pointsValueSchema>;
 
-/** Human display form of a points value: 3, 'TBD', or '1 to 6'. */
-export function pointsLabel(p: PointsValue): string {
-  if (typeof p === 'object') return `${p.min} to ${p.max}`;
+/** Human display form of a points value, with word or compact dash ranges. */
+export function pointsLabel(p: PointsValue, rangeFormat: 'words' | 'dash' = 'words'): string {
+  if (typeof p === 'object') return rangeFormat === 'dash' ? `${p.min}-${p.max}` : `${p.min} to ${p.max}`;
   return String(p);
 }
 
+const hexColorSchema = z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Use a six-digit hex color.');
+const optionalHexColorSchema = z.union([z.literal(''), hexColorSchema]);
+
 export const boardSpecSchema = z.object({
   title: z.string().min(1).max(60),
-  honoree: z.string().min(1).max(30),
+  /** Legacy second masthead line. New boards leave this blank and use title + subtitle. */
+  honoree: z.string().max(30).default(''),
   subtitle: z.string().max(80).optional(),
   players: z.array(z.string().min(1).max(24)).min(8).max(35),
   activities: z
@@ -45,9 +50,26 @@ export const boardSpecSchema = z.object({
     .min(5)
     .max(80),
   posterSize: z.enum(POSTER_SIZE_IDS),
+  template: z.enum(['portrait', 'landscapeBrackets']).default('portrait'),
+  brackets: z.array(z.object({
+    title: z.string().min(1).max(50),
+    slots: z.union([z.literal(8), z.literal(16)]),
+    teamSize: z.union([z.literal(1), z.literal(2)]).default(1),
+  })).max(6).default([]),
+  /** Display point ranges as "1 to 5" or the compact "1-5" form. */
+  pointsRangeFormat: z.enum(['words', 'dash']).default('words'),
+  /** Optional target printed in the TOTAL row's possible-points cell. */
+  totalsTarget: z.number().int().min(0).max(9999).optional(),
+  /** Optional strip title above the rules region; empty disables it. */
+  rulesTitle: z.string().max(80).default('GAME RULES:'),
+  /** Safe rich-text-lite source. Supports blank lines, `- ` bullets, and paired `**bold**`. */
+  rulesContent: z.string().max(50000).default(''),
+  /** Compatibility fields retained while the renderer migrates to rulesContent. */
+  /** Generic boards use heading colons; source-faithful occasion packs may opt out. */
+  rulesHeadingSuffix: z.enum(['colon', 'none']).default('colon'),
   rules: z
-    .array(z.object({ heading: z.string().min(1).max(40).optional(), text: z.string().min(1).max(300) }))
-    .max(12)
+    .array(z.object({ heading: z.string().min(1).max(140).optional(), text: z.string().min(1).max(6000) }))
+    .max(20)
     .default([]),
   footnote: z.string().max(200).optional(),
   /** Blank write-in rows appended after the activities (tiny rotated TBD marker). */
@@ -55,24 +77,24 @@ export const boardSpecSchema = z.object({
   /** Adds a "**BONUS POINTS GRANTED BY <HONOREE>**" row with -5 to 5 points. */
   honoreeBonusRow: z.boolean().default(false),
   /** Labeled write-in boxes in the header's top-right corner. */
-  cornerBoxes: z.array(z.string().min(1).max(30)).max(3).default([]),
+  cornerBoxes: z.array(z.string().min(1).max(40)).max(4).default([]),
   theme: z
     .object({
-      rowTint: z.string().default('#EAF1F8'),
+      rowTint: hexColorSchema.default('#EAF1F8'),
       highlightPointsHeader: z.boolean().default(true),
       bonusBracket: z.boolean().default(true),
       headerDivider: z.boolean().default(true),
       /** Title and honoree masthead lines. */
-      titleColor: z.string().default('#141414'),
+      titleColor: hexColorSchema.default('#141414'),
       /** Subtitle, divider, corner label, TOTAL, rules headings, corner boxes. */
-      accentColor: z.string().default('#141414'),
+      accentColor: hexColorSchema.default('#141414'),
       /** Activity names, player names, corner sublabel. */
-      activityColor: z.string().default('#141414'),
+      activityColor: hexColorSchema.default('#141414'),
       /** Points-header highlight box and bonus bracket. */
-      highlightColor: z.string().default('#B3261E'),
+      highlightColor: hexColorSchema.default('#B3261E'),
       /** '' disables the tint. */
-      pointsColTint: z.string().default(''),
-      maxPointsColTint: z.string().default(''),
+      pointsColTint: optionalHexColorSchema.default(''),
+      maxPointsColTint: optionalHexColorSchema.default(''),
       /** '' disables the corner labels. */
       cornerLabel: z.string().max(20).default(''),
       cornerSubLabel: z.string().max(20).default(''),

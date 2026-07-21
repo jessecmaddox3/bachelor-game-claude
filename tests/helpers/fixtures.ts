@@ -1,10 +1,27 @@
 import { boardSpecSchema, type BoardSpec } from '../../src/models/boardSpec';
+import { defaultDraft, type Draft } from '../../src/store/toBoardSpec';
 
 // Default player pool for makeSpec: a stable set of short, realistic names so
 // default-fixture layout results stay predictable across every later test.
 // Intentionally separate from the varied-length pool in playerNames() below;
 // do NOT merge them — changing these defaults would perturb every test baseline.
 const NAMES = ['Jesse', 'Kyle', 'Oscar', 'Matt', 'Drew', 'Tony', 'Sam', 'Alex', 'Ben', 'Chris', 'Dan', 'Eric'];
+
+export function makeDraft(over: Partial<Draft> = {}): Draft {
+  return {
+    ...defaultDraft(),
+    title: 'THE WEEKEND OF',
+    honoree: 'Steven',
+    players: NAMES.slice(0, 8),
+    activities: Array.from({ length: 8 }, (_, i) => ({
+      uid: crypto.randomUUID(),
+      name: `Challenge ${i + 1}`,
+      points: (i % 4) + 1,
+      bonus: false,
+    })),
+    ...over,
+  };
+}
 
 export function makeSpec(over: Record<string, unknown> = {}): BoardSpec {
   return boardSpecSchema.parse({

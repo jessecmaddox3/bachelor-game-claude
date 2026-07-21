@@ -6,7 +6,7 @@
 import { parse, type Font } from 'opentype.js';
 import { PT_PER_IN } from '../geometry';
 
-export type FontId = 'display' | 'body' | 'bodyBold';
+export type FontId = 'display' | 'body' | 'bodyBold' | 'landscape' | 'landscapeBold';
 export type FontBuffers = Record<FontId, ArrayBuffer>;
 
 /**
@@ -32,6 +32,8 @@ export class FontMetrics {
       display: parse(buffers.display),
       body: parse(buffers.body),
       bodyBold: parse(buffers.bodyBold),
+      landscape: parse(buffers.landscape),
+      landscapeBold: parse(buffers.landscapeBold),
     };
   }
 

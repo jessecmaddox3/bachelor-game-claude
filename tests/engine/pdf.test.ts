@@ -16,7 +16,7 @@ function fontBuffers() {
     const b = readFileSync(resolve(dir, n));
     return b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength) as ArrayBuffer;
   };
-  return { display: ab('ArchivoBlack-Regular.ttf'), body: ab('Lato-Regular.ttf'), bodyBold: ab('Lato-Bold.ttf') };
+  return { display: ab('ArchivoBlack-Regular.ttf'), body: ab('Lato-Regular.ttf'), bodyBold: ab('Lato-Bold.ttf'), landscape: ab('Montserrat-Regular.ttf'), landscapeBold: ab('Montserrat-Bold.ttf') };
 }
 
 async function pdfFor(over: Record<string, unknown> = {}) {
@@ -45,7 +45,7 @@ describe('renderPdf', () => {
     // re-serialize without them to make the /FontFile2 keys greppable.
     const flat = await (await PDFDocument.load(bytes)).save({ useObjectStreams: false });
     const raw = Buffer.from(flat).toString('latin1');
-    expect((raw.match(/\/FontFile2/g) ?? []).length).toBe(3);
+    expect((raw.match(/\/FontFile2/g) ?? []).length).toBe(5);
   });
 
   it('handles the largest poster size', async () => {

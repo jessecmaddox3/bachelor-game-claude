@@ -4,6 +4,7 @@ import { render, screen, waitFor, cleanup, fireEvent } from '@testing-library/re
 import { App } from '../../src/app/App';
 import { testMetrics } from '../helpers/loadFonts';
 import { useWizardStore } from '../../src/store/wizardStore';
+import { createJesse2017Draft } from '../../src/content/occasions';
 
 afterEach(() => {
   cleanup();
@@ -12,11 +13,12 @@ afterEach(() => {
 
 describe('App', () => {
   it('renders the wizard shell, preview svg, and quality badge', async () => {
-    useWizardStore.getState().reset();
+    useWizardStore.getState().replaceDraft(createJesse2017Draft());
     render(<App metrics={testMetrics()} buffers={null} />);
     expect(screen.getByText(/Setup/)).toBeDefined();
     expect(screen.getByText(/Activities/)).toBeDefined();
     expect(screen.getByText(/Design/)).toBeDefined();
+    expect(screen.getByRole('button', { name: /1\. setup/i })).toHaveAttribute('aria-current', 'step');
     await waitFor(() => expect(document.querySelector('.preview svg')).not.toBeNull(), { timeout: 5000 });
     await waitFor(() => expect(screen.getByTestId('quality-badge').textContent).toMatch(/good|tight|poor/i));
   });
@@ -29,6 +31,6 @@ describe('App', () => {
     expect(useWizardStore.getState().draft.honoree).toBe('CUSTOM GUY');
     fireEvent.click(screen.getByText('Start over'));
     expect(window.confirm).toHaveBeenCalledOnce();
-    expect(useWizardStore.getState().draft.honoree).toBe('YOUR GUY HERE');
+    expect(useWizardStore.getState().draft.honoree).toBe('');
   });
 });

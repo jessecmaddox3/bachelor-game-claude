@@ -6,6 +6,7 @@ interface WizardState {
   draft: Draft;
   step: 0 | 1 | 2;
   patch: (p: Partial<Draft>) => void;
+  replaceDraft: (draft: Draft) => void;
   setStep: (s: 0 | 1 | 2) => void;
   reset: () => void;
 }
@@ -16,12 +17,13 @@ export const useWizardStore = create<WizardState>()(
       draft: defaultDraft(),
       step: 0,
       patch: (p) => set((s) => ({ draft: { ...s.draft, ...p } })),
+      replaceDraft: (draft) => set({ draft }),
       setStep: (step) => set({ step }),
       reset: () => set({ draft: defaultDraft(), step: 0 }),
     }),
-    // Versioned key: build-4 saves used different keys and are deliberately ignored.
+    // Versioned key: older saves used different setup and rules shapes.
     {
-      name: 'bachelor-board-v2',
+      name: 'game-board-v5',
       // Deep-merge the persisted draft over defaults so newly-added Draft
       // fields are backfilled from defaults instead of shipping undefined.
       merge: (persisted, current) => {

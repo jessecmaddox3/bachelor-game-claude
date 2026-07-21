@@ -7,8 +7,13 @@ const EPS = 0.01; // inches of forgiveness for float noise
 export function overflowingRuns(scene: Scene, m: FontMetrics): TextRun[] {
   return scene.primitives.filter((p): p is TextRun => p.kind === 'text').filter((t) => {
     const w = m.widthIn(t.text, t.fontId, t.sizePt);
-    const budget = t.rotate === -90 ? t.box.h : t.box.w;
-    return w > budget + EPS;
+    if (t.rotate === -90) return w > t.box.h + EPS;
+    if (t.rotate === -45) {
+      const lineH = m.lineHeightIn(t.fontId, t.sizePt);
+      const extent = Math.SQRT1_2 * (w + lineH);
+      return extent > t.box.w + EPS || extent > t.box.h + EPS;
+    }
+    return w > t.box.w + EPS;
   });
 }
 

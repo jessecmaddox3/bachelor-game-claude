@@ -21,6 +21,8 @@ export function testMetrics(): FontMetrics {
     display: ab('ArchivoBlack-Regular.ttf'),
     body: ab('Lato-Regular.ttf'),
     bodyBold: ab('Lato-Bold.ttf'),
+    landscape: ab('Montserrat-Regular.ttf'),
+    landscapeBold: ab('Montserrat-Bold.ttf'),
   });
   return cached;
 }

@@ -106,8 +106,9 @@ function tryFit(grid: Box, spec: BoardSpec, m: FontMetrics, pt: number): GridLay
   const pointsColW = Math.max(
     MIN_COL_W,
     Math.max(
-      spec.honoreeBonusRow ? m.widthIn('-5 to 5', 'bodyBold', pt) : 0,
-      ...spec.activities.map((a) => m.widthIn(pointsLabel(a.points), 'bodyBold', pt)),
+      spec.honoreeBonusRow ? m.widthIn(pointsLabel({ min: -5, max: 5 }, spec.pointsRangeFormat), 'bodyBold', pt) : 0,
+      spec.totalsTarget !== undefined ? m.widthIn(String(spec.totalsTarget), 'bodyBold', pt) : 0,
+      ...spec.activities.map((a) => m.widthIn(pointsLabel(a.points, spec.pointsRangeFormat), 'bodyBold', pt)),
     ) + 2 * CELL_PAD,
   );
 

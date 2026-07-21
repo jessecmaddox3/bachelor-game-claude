@@ -25,6 +25,8 @@ export async function renderPdf(scene: Scene, m: FontMetrics, buffers: FontBuffe
     display: await doc.embedFont(buffers.display, { subset: true }),
     body: await doc.embedFont(buffers.body, { subset: true }),
     bodyBold: await doc.embedFont(buffers.bodyBold, { subset: true }),
+    landscape: await doc.embedFont(buffers.landscape, { subset: true }),
+    landscapeBold: await doc.embedFont(buffers.landscapeBold, { subset: true }),
   };
   const page = doc.addPage([scene.widthIn * PT_PER_IN, scene.heightIn * PT_PER_IN]);
   const X = (x: number) => x * PT_PER_IN;
@@ -65,7 +67,7 @@ export async function renderPdf(scene: Scene, m: FontMetrics, buffers: FontBuffe
         font: f[p.fontId],
         color: color(p.color),
         // Scene -90 (clockwise, y-down page) = PDF +90 (counterclockwise, y-up)
-        rotate: degrees(pl.rotate === -90 ? 90 : 0),
+        rotate: degrees(pl.rotate === -90 ? 90 : pl.rotate === -45 ? 45 : 0),
       });
     }
   }

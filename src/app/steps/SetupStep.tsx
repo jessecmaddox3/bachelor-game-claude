@@ -1,68 +1,206 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useWizardStore } from '../../store/wizardStore';
-import { POSTER_SIZES, type PosterSizeId } from '../../engine';
+import { ACTIVITY_OCCASIONS, ACTIVITY_OCCASION_LABELS } from '../../content/activities';
+import { OCCASION_PACKS, occasionById } from '../../content/occasions';
+import { defaultDraft, sortParticipantNames } from '../../store/toBoardSpec';
+
+function playerNames(value: string): string[] {
+  return value
+    .split(/[,;\n]+/)
+    .map((name) => name.trim().slice(0, 24))
+    .filter(Boolean);
+}
 
 export function SetupStep() {
-  const { draft, patch } = useWizardStore();
+  const { draft, patch, replaceDraft, setStep } = useWizardStore();
   const [newPlayer, setNewPlayer] = useState('');
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [editingName, setEditingName] = useState('');
+  const [presetId, setPresetId] = useState(OCCASION_PACKS[0]?.id ?? '');
+  const playerInput = useRef<HTMLInputElement>(null);
 
-  const addPlayer = () => {
-    const name = newPlayer.trim();
-    if (!name || draft.players.length >= 35) return;
-    patch({ players: [...draft.players, name] });
+  const addPlayers = (value = newPlayer) => {
+    const additions = playerNames(value).slice(0, Math.max(0, 35 - draft.players.length));
+    if (additions.length > 0) patch({ players: sortParticipantNames([...draft.players, ...additions]) });
+    setNewPlayer('');
+    playerInput.current?.focus();
+  };
+
+  const beginEditing = (index: number) => {
+    setEditingIndex(index);
+    setEditingName(draft.players[index] ?? '');
+  };
+
+  const finishEditing = () => {
+    if (editingIndex === null) return;
+    const name = editingName.trim().slice(0, 24);
+    patch({
+      players: sortParticipantNames(name
+        ? draft.players.map((player, index) => (index === editingIndex ? name : player))
+        : draft.players.filter((_, index) => index !== editingIndex)),
+    });
+    setEditingIndex(null);
+    setEditingName('');
+  };
+
+  const loadPreset = () => {
+    const preset = occasionById(presetId);
+    if (!preset) return;
+    const hasWork = JSON.stringify(draft) !== JSON.stringify(defaultDraft());
+    if (hasWork && !window.confirm('Load this preset? It replaces your current board.')) return;
+    replaceDraft(preset.createDraft());
+    setEditingIndex(null);
     setNewPlayer('');
   };
 
   return (
-    <div>
-      <h2>Event</h2>
-      <div className="field">
-        <label htmlFor="title">Title line</label>
-        <input id="title" value={draft.title} onChange={(e) => patch({ title: e.target.value })} maxLength={60} />
-      </div>
-      <div className="field">
-        <label htmlFor="honoree">Honoree</label>
-        <input id="honoree" value={draft.honoree} onChange={(e) => patch({ honoree: e.target.value })} maxLength={30} />
-      </div>
-      <div className="field">
-        <label htmlFor="subtitle">Subtitle / date line (optional)</label>
-        <input id="subtitle" value={draft.subtitle} onChange={(e) => patch({ subtitle: e.target.value })} maxLength={80} />
-      </div>
-      <div className="field">
-        <label htmlFor="size">Poster size</label>
-        <select id="size" value={draft.posterSize} onChange={(e) => patch({ posterSize: e.target.value as PosterSizeId })}>
-          {Object.keys(POSTER_SIZES).map((s) => (
-            <option key={s} value={s}>{s.replace('x', '" x ')}"</option>
-          ))}
-        </select>
+    <div className="setup-step">
+      <div className="step-heading">
+        <div>
+          <span className="eyebrow">Step 1</span>
+          <h2>Set up the weekend</h2>
+          <p>Choose the occasion, name the board, and confirm who’s joining.</p>
+        </div>
       </div>
 
-      <h2>Players ({draft.players.length}/35)</h2>
-      <ul className="roster">
-        {/* Index-only keys: these inputs are controlled, so an index key keeps
-            focus while typing (a name-based key would change every keystroke
-            and remount the row) and never goes stale on removal. */}
-        {draft.players.map((p, i) => (
-          <li key={i} className="row">
+      <section className="setup-section occasion-section" aria-labelledby="occasion-heading">
+        <div className="section-heading">
+          <div>
+            <h3 id="occasion-heading">Choose an occasion</h3>
+            <p>This tailors the activity ideas in the next step.</p>
+          </div>
+        </div>
+        <div className="occasion-layout">
+          <fieldset className="occasion-options">
+            <legend className="sr-only">What’s the occasion?</legend>
+            {ACTIVITY_OCCASIONS.map((occasion) => (
+              <label className="occasion-card" key={occasion}>
+                <input
+                  type="radio"
+                  name="occasion"
+                  value={occasion}
+                  checked={draft.libraryOccasion === occasion}
+                  onChange={() => patch({ libraryOccasion: occasion })}
+                />
+                <span>{ACTIVITY_OCCASION_LABELS[occasion]}</span>
+              </label>
+            ))}
+          </fieldset>
+          <aside className="saved-board-panel" aria-labelledby="saved-board-heading">
+            <span className="saved-board-kicker">Already have a board?</span>
+            <h4 id="saved-board-heading">Load a saved board</h4>
+            <p>Replaces the current roster, activities, and design.</p>
+            <div className="field">
+              <label htmlFor="savedBoard">Saved board</label>
+              <select id="savedBoard" value={presetId} onChange={(event) => setPresetId(event.target.value)}>
+                {OCCASION_PACKS.map((pack) => <option key={pack.id} value={pack.id}>{pack.name}</option>)}
+              </select>
+            </div>
+            <button className="secondary" onClick={loadPreset}>Load preset</button>
+            <small>{occasionById(presetId)?.description}</small>
+          </aside>
+        </div>
+      </section>
+
+      <section className="setup-section" aria-labelledby="event-heading">
+        <div className="section-heading">
+          <div>
+            <h3 id="event-heading">Name the board</h3>
+            <p>Keep it short. These lines become the poster headline.</p>
+          </div>
+        </div>
+        <div className="setup-grid">
+          <div className="field">
+            <label htmlFor="title">Title</label>
+            <input id="title" value={draft.title} onChange={(event) => patch({ title: event.target.value })} maxLength={60} placeholder="The Bachelor Weekend of Jesse Cordell Maddox III" />
+          </div>
+          <div className="field">
+            <label htmlFor="subtitle">Subtitle</label>
+            <input id="subtitle" value={draft.subtitle} onChange={(event) => patch({ subtitle: event.target.value })} maxLength={80} placeholder="October 19th - 22nd, 2022 - Blue Ridge, GA" />
+          </div>
+        </div>
+      </section>
+
+      <section className="setup-section" aria-labelledby="players-heading">
+        <div className="section-heading roster-heading">
+          <div>
+            <h3 id="players-heading">Participants</h3>
+            <p>Enter one name at a time, or paste a comma-separated list.</p>
+          </div>
+          <span className="roster-count">{draft.players.length}/35</span>
+        </div>
+
+        <div className="field player-composer-field">
+          <label htmlFor="playerComposer">Add participants</label>
+          <div className="player-composer">
             <input
-              value={p}
-              maxLength={24}
-              onChange={(e) => patch({ players: draft.players.map((x, j) => (j === i ? e.target.value : x)) })}
+              ref={playerInput}
+              id="playerComposer"
+              value={newPlayer}
+              placeholder="Type a name and press Enter"
+              autoComplete="off"
+              onChange={(event) => setNewPlayer(event.target.value.slice(0, 900))}
+              onPaste={(event) => {
+                const pasted = event.clipboardData.getData('text');
+                if (!/[,;\n]/.test(pasted)) return;
+                event.preventDefault();
+                addPlayers(pasted);
+              }}
+              onKeyDown={(event) => {
+                if (event.key !== 'Enter') return;
+                event.preventDefault();
+                addPlayers();
+              }}
+              disabled={draft.players.length >= 35}
             />
-            <button className="ghost" aria-label={`Remove ${p}`} onClick={() => patch({ players: draft.players.filter((_, j) => j !== i) })}>×</button>
-          </li>
-        ))}
-      </ul>
-      <div className="row">
-        <input
-          placeholder="Add player…"
-          value={newPlayer}
-          maxLength={24}
-          onChange={(e) => setNewPlayer(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && addPlayer()}
-        />
-        <button className="ghost" onClick={addPlayer}>Add</button>
-      </div>
+            <button className="secondary" onClick={() => addPlayers()} disabled={!newPlayer.trim() || draft.players.length >= 35}>Add participants</button>
+          </div>
+        </div>
+
+        {draft.players.length === 0 ? (
+          <div className="roster-empty">Add everyone who’s playing. You can paste a list here too.</div>
+        ) : (
+          <div className="roster-chips" role="list" aria-label="Participants">
+            {draft.players.map((player, index) => (
+              <span className="player-chip" role="listitem" key={`${index}-${player}`}>
+                {editingIndex === index ? (
+                  <input
+                    className="player-chip-input"
+                    aria-label={`Edit ${player}`}
+                    value={editingName}
+                    maxLength={24}
+                    autoFocus
+                    onChange={(event) => setEditingName(event.target.value)}
+                    onBlur={finishEditing}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') {
+                        event.preventDefault();
+                        finishEditing();
+                      }
+                      if (event.key === 'Escape') {
+                        setEditingIndex(null);
+                        setEditingName('');
+                      }
+                    }}
+                  />
+                ) : (
+                  <button className="player-chip-name" aria-label={`Edit ${player}`} onClick={() => beginEditing(index)}>{player}</button>
+                )}
+                <button
+                  className="player-chip-remove"
+                  aria-label={`Remove ${player}`}
+                  onClick={() => {
+                    patch({ players: draft.players.filter((_, playerIndex) => playerIndex !== index) });
+                    if (editingIndex === index) setEditingIndex(null);
+                  }}
+                >×</button>
+              </span>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <div className="step-footer"><span /><button className="primary" onClick={() => setStep(1)}>Continue to activities</button></div>
     </div>
   );
 }

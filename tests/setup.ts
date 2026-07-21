@@ -1,3 +1,5 @@
+import '@testing-library/jest-dom/vitest';
+
 // Node 25 ships a built-in `localStorage` global that is broken unless the
 // process is started with --localstorage-file (its setItem/getItem are not
 // functions). It also shadows jsdom's working implementation under the jsdom

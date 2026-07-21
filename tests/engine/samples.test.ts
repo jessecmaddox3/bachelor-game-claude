@@ -9,6 +9,8 @@ import { renderPdf } from '../../src/engine/render/pdf';
 import { buildBoard } from '../../src/engine/buildBoard';
 import { makeSpec, playerNames } from '../helpers/fixtures';
 import { testMetrics } from '../helpers/loadFonts';
+import { createJesse2017Draft } from '../../src/content/occasions';
+import { toBoardSpec } from '../../src/store/toBoardSpec';
 
 const m = testMetrics();
 const fontsDir = fileURLToPath(new URL('../../src/assets/fonts', import.meta.url));
@@ -22,6 +24,8 @@ const buffers = () => ({
   display: ab('ArchivoBlack-Regular.ttf'),
   body: ab('Lato-Regular.ttf'),
   bodyBold: ab('Lato-Bold.ttf'),
+  landscape: ab('Montserrat-Regular.ttf'),
+  landscapeBold: ab('Montserrat-Bold.ttf'),
 });
 
 function stevenLike() {
@@ -142,5 +146,36 @@ describe('visual smoke (resvg) + sample artifacts', () => {
       font: { fontFiles: [resolve(fontsDir, 'Lato-Regular.ttf'), resolve(fontsDir, 'Lato-Bold.ttf'), resolve(fontsDir, 'ArchivoBlack-Regular.ttf')], loadSystemFonts: false },
     }).render().asPng();
     expect(png.byteLength).toBeGreaterThan(10_000);
+  }, 60_000);
+
+  it('rasterizes the Jesse 2017 landscape preset and writes a review sample', async () => {
+    const parsed = toBoardSpec(createJesse2017Draft());
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+    const result = buildBoard(parsed.spec, m);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    const svg = renderSvg(result.scene, m, { embedFonts: buffers() });
+    const png = new Resvg(svg, {
+      fitTo: { mode: 'width', value: 1200 },
+      font: {
+        fontFiles: [
+          resolve(fontsDir, 'ArchivoBlack-Regular.ttf'),
+          resolve(fontsDir, 'Lato-Regular.ttf'),
+          resolve(fontsDir, 'Lato-Bold.ttf'),
+        ],
+        loadSystemFonts: false,
+      },
+    }).render().asPng();
+    expect(pngDimensions(png)).toEqual({ width: 1200, height: 960 });
+    expect(png.byteLength).toBeGreaterThan(30_000);
+
+    const pdf = await renderPdf(result.scene, m, buffers());
+    expect((await PDFDocument.load(pdf)).getPageCount()).toBe(1);
+    mkdirSync(samplesDir, { recursive: true });
+    writeFileSync(resolve(samplesDir, 'jesse-2017-landscape.svg'), svg);
+    writeFileSync(resolve(samplesDir, 'jesse-2017-landscape.png'), png);
+    writeFileSync(resolve(samplesDir, 'jesse-2017-landscape.pdf'), pdf);
   }, 60_000);
 });

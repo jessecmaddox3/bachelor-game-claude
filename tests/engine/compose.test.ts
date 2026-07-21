@@ -44,6 +44,16 @@ describe('composeScene: header and rail', () => {
     expect(overflowingRuns(scene, m)).toEqual([]);
   });
 
+  it('lays out a new-board header using only title and subtitle when honoree is blank', () => {
+    const { scene } = build({ title: 'Kids Weekend', honoree: '', subtitle: 'October 19th - 22nd, 2022 - Blue Ridge, GA' });
+    const headerText = texts(scene).filter((run) => run.box.y < 5);
+    expect(headerText.map((run) => run.text)).toEqual(expect.arrayContaining([
+      'Kids Weekend', 'October 19th - 22nd, 2022 - Blue Ridge, GA',
+    ]));
+    expect(headerText.some((run) => run.text === '')).toBe(false);
+    expect(overflowingRuns(scene, m)).toEqual([]);
+  });
+
   it('draws the rail box and title when a rail is reserved', () => {
     const { scene } = build({ sideRail: { side: 'right', widthIn: 5, title: 'BEER PONG BRACKET' } });
     expect(texts(scene).map((t) => t.text)).toContain('BEER PONG BRACKET');
@@ -97,6 +107,77 @@ describe('composeScene: grid', () => {
     });
     expect(overflowingRuns(scene, m)).toEqual([]);
     expect(outOfPage(scene)).toEqual([]);
+  });
+
+  it('grows sparse landscape activity, point, and participant text within each cell', () => {
+    const players = [
+      'Bo', 'Bobby', 'Brett', 'Coco', 'Eleanor', 'Hunter', 'Jack', 'Jess', 'Kate', 'Kaz',
+      'Mary', 'Nona', 'Rachel', 'SG', 'Shay Shay', 'Steven', 'Amy', 'Ben', 'Cara', 'Dan',
+      'Eva', 'Finn', 'Gus', 'Hope', 'Ian', 'Jane', 'Kyle', 'Liam', 'Mia', 'Noah',
+    ];
+    const activities = Array.from({ length: 5 }, (_, i) => ({ name: `Sparse Task ${i + 1}`, points: i + 1 }));
+    const { scene } = build({
+      template: 'landscapeBrackets', posterSize: '60x48', players, activities,
+      brackets: [], cornerBoxes: [], rules: [], rulesContent: '', footnote: '', totalsTarget: undefined,
+    });
+    const activityRuns = texts(scene).filter((run) => /^SPARSE TASK/.test(run.text));
+    const pointRuns = texts(scene).filter((run) => ['1', '2', '3', '4', '5'].includes(run.text));
+    const playerRuns = texts(scene).filter((run) => run.rotate === -45 && players.map((name) => name.toUpperCase()).includes(run.text));
+    expect(activityRuns).toHaveLength(5);
+    expect(activityRuns.every((run) => run.sizePt > 9 && run.sizePt <= 20)).toBe(true);
+    expect(pointRuns.every((run) => run.sizePt > 9 && run.sizePt <= 20)).toBe(true);
+    expect(playerRuns).toHaveLength(players.length);
+    expect(playerRuns.every((run) => run.sizePt <= 18)).toBe(true);
+    expect(overflowingRuns(scene, m)).toEqual([]);
+    expect(outOfPage(scene)).toEqual([]);
+  });
+
+  it('fits sparse portrait activity, point, and participant text independently within each cell', () => {
+    const players = Array.from({ length: 30 }, (_, i) => i === 0 ? 'Bartholomew Wellington' : `P${i + 1}`);
+    const activities = Array.from({ length: 5 }, (_, i) => ({ name: `Portrait Task ${i + 1}`, points: i + 1 }));
+    const result = buildBoard(makeSpec({
+      posterSize: '24x36', players, activities,
+      brackets: [], cornerBoxes: [], rules: [], rulesContent: '', footnote: '', totalsTarget: undefined,
+    }), m);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const activityRuns = texts(result.scene).filter((run) => /^Portrait Task/.test(run.text));
+    const pointRuns = texts(result.scene).filter((run) => ['1', '2', '3', '4', '5'].includes(run.text));
+    const playerRuns = texts(result.scene).filter((run) => run.rotate === -90 && players.includes(run.text));
+    expect(activityRuns).toHaveLength(5);
+    expect(activityRuns.every((run) => run.sizePt >= result.quality.bodyPt && run.sizePt <= 20)).toBe(true);
+    expect(pointRuns.every((run) => run.sizePt >= result.quality.bodyPt && run.sizePt <= 20)).toBe(true);
+    expect(playerRuns.length).toBeGreaterThanOrEqual(players.length - 1);
+    expect(playerRuns.every((run) => run.sizePt <= 18)).toBe(true);
+    expect(overflowingRuns(result.scene, m)).toEqual([]);
+  });
+
+  it('never returns a successful landscape scene with worst-case allowed text overflow', () => {
+    const result = buildBoard(makeSpec({
+      template: 'landscapeBrackets',
+      posterSize: '60x48',
+      players: Array.from({ length: 30 }, (_, i) => i === 0 ? 'W'.repeat(24) : `P${i + 1}`),
+      activities: [
+        { name: 'W'.repeat(90), points: 1 },
+        ...Array.from({ length: 4 }, (_, i) => ({ name: `Task ${i + 2}`, points: i + 2 })),
+      ],
+      brackets: [], cornerBoxes: [], rules: [], rulesContent: '', footnote: '', totalsTarget: undefined,
+    }), m);
+    if (result.ok) {
+      expect(overflowingRuns(result.scene, m)).toEqual([]);
+    } else {
+      expect(result.reason).toMatch(/landscape content cannot fit/i);
+    }
+  });
+
+  it('does not silently omit an unfit landscape rules heading', () => {
+    const result = buildBoard(makeSpec({
+      template: 'landscapeBrackets', posterSize: '60x48',
+      players: ['Jess', 'Brett', 'Hunter', 'Kate', 'Jack', 'Bobby', 'Kaz', 'Bo'],
+      activities: Array.from({ length: 5 }, (_, i) => ({ name: `Task ${i + 1}`, points: i + 1 })),
+      brackets: [], cornerBoxes: [], rules: [], rulesContent: `**${'W'.repeat(300)}**`, footnote: '',
+    }), m);
+    expect(result.ok).toBe(false);
   });
 });
 
@@ -243,7 +324,8 @@ describe('composeScene: structured rules footer', () => {
   ];
 
   it('renders GAME RULES heading, rule headings, and texts in columns', () => {
-    const { scene } = build({ rules, footnote: 'Speaking a banned word means you must finish your drink.' });
+    const rulesContent = rules.map((rule) => `${rule.heading ? `**${rule.heading}**\n` : ''}${rule.text}`).join('\n\n');
+    const { scene } = build({ rules, rulesContent, footnote: 'Speaking a banned word means you must finish your drink.' });
     const strings = texts(scene).map((t) => t.text);
     expect(strings).toContain('GAME RULES:');
     expect(strings).toContain('BUFFALO:');
@@ -254,20 +336,39 @@ describe('composeScene: structured rules footer', () => {
   });
 
   it('headed rules use the accent color for headings', () => {
-    const { scene } = build({ rules, theme: { accentColor: '#3A6BC7' } });
+    const { scene } = build({ rules, rulesContent: '**BUFFALO**\nCall it and they chug.', theme: { accentColor: '#3A6BC7' } });
     const heading = texts(scene).find((t) => t.text === 'BUFFALO:');
     expect(heading!.color).toBe('#3A6BC7');
   });
 
-  it('worst-case rules still fit', () => {
+  it('renders inline bold spans and measured bullets without marker characters', () => {
+    const { scene } = build({
+      rules: [],
+      rulesContent: 'Choose a **helpful** challenge.\n\n- Encourage them **kindly** today.',
+      footnote: '',
+    });
+    const runs = texts(scene);
+    expect(runs.find((run) => run.text === 'helpful')?.fontId).toBe('bodyBold');
+    expect(runs.find((run) => run.text === 'kindly')?.fontId).toBe('bodyBold');
+    expect(runs.some((run) => run.text === '•')).toBe(true);
+    expect(runs.some((run) => run.text.includes('**'))).toBe(false);
+    expect(overflowingRuns(scene, m)).toEqual([]);
+  });
+
+  it('refuses rules that cannot fit instead of silently dropping content', () => {
     const fat = Array.from({ length: 12 }, (_, i) => ({
       heading: `RULE NUMBER ${i} WITH A LONG HEADING`,
       text: 'x'.repeat(280) + ' end.',
     }));
-    const { scene } = build({ posterSize: '18x24', rules: fat, footnote: 'f'.repeat(190) });
-    expect(overflowingRuns(scene, m)).toEqual([]);
-    expect(outOfPage(scene)).toEqual([]);
-  });
+    const result = buildBoard(makeSpec({
+      posterSize: '18x24',
+      rules: fat,
+      rulesContent: fat.map((rule) => `**${rule.heading}**\n${rule.text}`).join('\n\n'),
+      footnote: 'f'.repeat(190),
+    }), m);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.reason).toMatch(/rules do not fit/i);
+  }, 15_000);
 });
 
 describe('composeScene: write-in elements', () => {

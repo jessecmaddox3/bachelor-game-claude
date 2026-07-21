@@ -1,6 +1,6 @@
 import type { z } from 'zod';
 import { boardSpecSchema, type BoardSpec, type PointsValue } from '../models/boardSpec';
-import { ACTIVITY_LIBRARY, STARTER_RULES, STARTER_FOOTNOTE } from '../content/activities';
+import { STARTER_RULES_CONTENT, type ActivityOccasion } from '../content/activities';
 import { THEME_PRESETS } from '../content/themes';
 
 /** Permissive editing shape: same fields as BoardSpec, but nothing enforced until validation. */
@@ -10,8 +10,18 @@ export type Draft = {
   subtitle: string;
   players: string[];
   /** `uid` is editor-only row identity (React keys); zod strips it from BoardSpec output. */
-  activities: Array<{ uid: string; name: string; points: PointsValue; maxPoints?: number; bonus: boolean }>;
+  activities: Array<{ uid: string; catalogId?: string; name: string; points: PointsValue; maxPoints?: number; bonus: boolean }>;
+  /** Editor-only filter preference; zod strips it from the rendered BoardSpec. */
+  libraryOccasion: ActivityOccasion;
   posterSize: BoardSpec['posterSize'];
+  template: BoardSpec['template'];
+  brackets: BoardSpec['brackets'];
+  pointsRangeFormat: BoardSpec['pointsRangeFormat'];
+  totalsTarget?: number;
+  rulesTitle: string;
+  rulesContent: string;
+  /** Compatibility fields retained until the renderer migration is complete. */
+  rulesHeadingSuffix: BoardSpec['rulesHeadingSuffix'];
   rules: Array<{ heading?: string; text: string }>;
   footnote: string;
   writeInRows: number;
@@ -20,26 +30,37 @@ export type Draft = {
   theme: Partial<BoardSpec['theme']>;
 };
 
+export const DEFAULT_PARTICIPANTS = [
+  'Jess', 'Kate', 'Jack', 'Bobby', 'Kaz', 'Brett', 'Rachel', 'Bo',
+  'Eleanor', 'Hunter', 'SG', 'Coco', 'Nona', 'Shay Shay', 'Steven', 'Mary',
+].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+
+export function sortParticipantNames(names: readonly string[]): string[] {
+  return [...names].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+}
+
 export function defaultDraft(): Draft {
   // Cloned so in-place draft mutation can never corrupt the shared preset/content constants.
   return structuredClone({
-    title: 'THE BACHELOR WEEKEND OF',
-    honoree: 'YOUR GUY HERE',
+    title: 'Kids Weekend',
+    honoree: '',
     subtitle: '',
-    players: ['Player 1', 'Player 2', 'Player 3', 'Player 4', 'Player 5', 'Player 6', 'Player 7', 'Player 8'],
-    activities: ACTIVITY_LIBRARY.slice(0, 20).map((a) => ({
-      uid: crypto.randomUUID(),
-      name: a.name,
-      points: a.points,
-      ...(a.maxPoints !== undefined ? { maxPoints: a.maxPoints } : {}),
-      bonus: false,
-    })),
+    players: DEFAULT_PARTICIPANTS,
+    activities: [],
+    libraryOccasion: 'kids-weekend',
     posterSize: '24x36',
-    rules: STARTER_RULES.slice(0, 4),
-    footnote: STARTER_FOOTNOTE,
-    writeInRows: 2,
-    honoreeBonusRow: true,
-    cornerBoxes: ['GRAND CHAMPION', 'THE LOSER OF IT ALL'],
+    template: 'portrait',
+    brackets: [],
+    pointsRangeFormat: 'words',
+    totalsTarget: undefined,
+    rulesTitle: 'GAME RULES:',
+    rulesContent: STARTER_RULES_CONTENT,
+    rulesHeadingSuffix: 'colon',
+    rules: [],
+    footnote: '',
+    writeInRows: 0,
+    honoreeBonusRow: false,
+    cornerBoxes: [],
     theme: THEME_PRESETS[0]!.theme,
   });
 }

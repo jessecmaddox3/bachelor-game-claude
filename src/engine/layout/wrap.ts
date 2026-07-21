@@ -14,11 +14,13 @@ export function hardEllipsize(
   m: FontMetrics,
 ): { text: string; ellipsized: boolean } {
   if (m.widthIn(text, fontId, sizePt) <= maxW) return { text, ellipsized: false };
+  const ellipsis = '…';
+  if (m.widthIn(ellipsis, fontId, sizePt) > maxW) return { text: '', ellipsized: true };
   let t = text;
-  while (t.length > 1 && m.widthIn(t + '…', fontId, sizePt) > maxW) {
+  while (t.length > 0 && m.widthIn(t + ellipsis, fontId, sizePt) > maxW) {
     t = t.slice(0, -1).trimEnd();
   }
-  return { text: t + '…', ellipsized: true };
+  return { text: t + ellipsis, ellipsized: true };
 }
 
 /**
@@ -81,6 +83,66 @@ export function fitSizePt(
 ): number | null {
   for (let pt = maxPt; pt >= minPt; pt -= 0.5) {
     if (m.widthIn(text, fontId, pt) <= maxW && m.lineHeightIn(fontId, pt) <= maxH) return pt;
+  }
+  return null;
+}
+
+/**
+ * Fit a complete text block without ellipsizing. Long unspaced values are
+ * split at character boundaries so user-entered labels are never clipped or
+ * silently shortened.
+ */
+export function fitWrappedText(
+  text: string,
+  maxW: number,
+  maxH: number,
+  fontId: FontId,
+  m: FontMetrics,
+  options: { minPt: number; maxPt: number; maxLines: number },
+): { pt: number; lines: string[] } | null {
+  const wrapComplete = (sizePt: number): string[] | null => {
+    const words = text.trim().split(/\s+/).filter(Boolean);
+    if (words.length === 0) return [];
+    const lines: string[] = [];
+    let current = '';
+    const push = () => {
+      if (current) lines.push(current);
+      current = '';
+    };
+
+    for (const word of words) {
+      const candidate = current ? `${current} ${word}` : word;
+      if (m.widthIn(candidate, fontId, sizePt) <= maxW) {
+        current = candidate;
+        continue;
+      }
+      push();
+      if (m.widthIn(word, fontId, sizePt) <= maxW) {
+        current = word;
+        continue;
+      }
+
+      let chunk = '';
+      for (const character of Array.from(word)) {
+        const next = chunk + character;
+        if (chunk && m.widthIn(next, fontId, sizePt) > maxW) {
+          lines.push(chunk);
+          chunk = character;
+        } else {
+          chunk = next;
+        }
+        if (m.widthIn(chunk, fontId, sizePt) > maxW) return null;
+      }
+      current = chunk;
+    }
+    push();
+    return lines.length <= options.maxLines ? lines : null;
+  };
+
+  for (let pt = options.maxPt; pt >= options.minPt; pt -= 0.5) {
+    const lines = wrapComplete(pt);
+    if (!lines) continue;
+    if (lines.length * m.lineHeightIn(fontId, pt) <= maxH) return { pt, lines };
   }
   return null;
 }

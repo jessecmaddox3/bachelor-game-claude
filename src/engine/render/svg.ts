@@ -12,8 +12,8 @@ export interface SvgOptions {
   embedFonts?: FontBuffers;
 }
 
-const FAMILY: Record<FontId, string> = { display: 'Archivo Black', body: 'Lato', bodyBold: 'Lato' };
-const WEIGHT: Record<FontId, number> = { display: 400, body: 400, bodyBold: 700 };
+const FAMILY: Record<FontId, string> = { display: 'Archivo Black', body: 'Lato', bodyBold: 'Lato', landscape: 'Montserrat', landscapeBold: 'Montserrat' };
+const WEIGHT: Record<FontId, number> = { display: 400, body: 400, bodyBold: 700, landscape: 400, landscapeBold: 700 };
 
 const n = (v: number) => String(Number(v.toFixed(4)));
 
@@ -31,7 +31,7 @@ function b64(buf: ArrayBuffer): string {
 function fontFaceDefs(buffers: FontBuffers): string {
   const face = (family: string, weight: number, buf: ArrayBuffer) =>
     `@font-face{font-family:'${family}';font-weight:${weight};src:url(data:font/ttf;base64,${b64(buf)}) format('truetype');}`;
-  return `<defs><style>${face('Archivo Black', 400, buffers.display)}${face('Lato', 400, buffers.body)}${face('Lato', 700, buffers.bodyBold)}</style></defs>`;
+  return `<defs><style>${face('Archivo Black', 400, buffers.display)}${face('Lato', 400, buffers.body)}${face('Lato', 700, buffers.bodyBold)}${face('Montserrat', 400, buffers.landscape)}${face('Montserrat', 700, buffers.landscapeBold)}</style></defs>`;
 }
 
 function rect(p: RectPrim): string {
@@ -62,6 +62,7 @@ function text(t: TextRun, m: FontMetrics): string {
     `lengthAdjust="spacing"`,
   ];
   if (pl.rotate === -90) attrs.push(`transform="rotate(-90 ${n(pl.x)} ${n(pl.y)})"`);
+  if (pl.rotate === -45) attrs.push(`transform="rotate(-45 ${n(pl.x)} ${n(pl.y)})"`);
   return `<text ${attrs.join(' ')}>${esc(t.text)}</text>`;
 }
 
