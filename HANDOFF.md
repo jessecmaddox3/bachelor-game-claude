@@ -13,7 +13,7 @@
 - Changed files: named-save store/UI/test files, `docs/superpowers/plans/2026-07-22-named-board-saves.md`, `index.html`, and `tests/app/indexHtml.test.ts`.
 - Verify command: `npm test && npx tsc --noEmit && npm run build`. Site builds must use `npx vite build --base=/projects/gameboard/`. Live verification must fetch the JS path referenced by `/gameboard` and check for `game-board-saves-v1`.
 - Current risks / known issues: Saves are intentionally browser-local and disappear if that browser's site storage is cleared. Cross-device sync is out of scope. Vite's large-chunk warning remains non-blocking.
-- Workspace metadata note: this sandbox could not write this repo's local `.git`. The reviewed workspace files match remote tip `6c22c96` byte-for-byte, but local `git status` still compares them to old HEAD `fea943f`. In a Git-writable terminal, run `git fetch origin && git reset --mixed origin/main` to advance metadata without rewriting the worktree. Do not recommit the apparent duplicate changes.
+- Workspace metadata note: this sandbox could not write this repo's local `.git`. The reviewed workspace files match the remote product state byte-for-byte, but local `git status` still compares them to old HEAD `fea943f`. In a Git-writable terminal, run `git fetch origin && git reset --mixed origin/main` to advance metadata without rewriting the worktree. Do not recommit the apparent duplicate changes.
 - Do not repeat: Do not store named saves in `game-board-v5`. Do not build the site artifact without `/projects/gameboard/` as Vite's base. Do not reunify this product with Challenge Lab.
 - Suggested next step: Jesse creates the kids board, saves it by name, and prints the Letter PDF.
 - Last tool + date: Codex, 2026-07-22.
