@@ -1,33 +1,29 @@
 # Handoff
 
-- Original goal: Rebuild Jesse's 2017 bachelor game board as a shelf-stable poster generator, simplify the builder from real-world feedback, and preserve the challenge research that seeded a separate three-brother mobile web game.
+- Original goal: Rebuild Jesse's 2017 bachelor game board as a shelf-stable poster generator. The gameboard is now content-complete, deployed, and in active family use; the separate challenge game lives in `/Users/jesse/claude/challenge-game` (its own `HANDOFF.md` is authoritative for that repo). The two products are intentionally separate (see `docs/product/2026-07-22-decision-register.md`).
 
-- Current phase: The gameboard is content-complete. The 2026-07-22 review-pass release (commit `33e1b00`) is pushed and deployed to `https://jessemaddox.com/gameboard`. For the challenge game (`/Users/jesse/claude/challenge-game`, live at `jessemaddox.com/challenge-lab`), that repo's own `HANDOFF.md` is authoritative; do not restate its task status here. The two products are intentionally separate (see `docs/product/2026-07-22-decision-register.md`).
+- Current phase: **Codex takes over as the single writer (2026-07-22).** Claude's session ended after shipping three releases today; all work is committed and pushed, both trees clean. One new feature is requested and NOT started: named save/load of board configurations (details in Pending). Jesse wants it before he builds this weekend's kids board, which he plans to print on Letter paper tomorrow.
 
-- Done:
-  - Setup, Activities, and Design steps redesigned and shipped (blue visual system, per-occasion seed library, chip-based player entry).
-  - Review-pass release `33e1b00`: family roster spelling fixes (Kait, Bobbie, Caz, Shasha), restored relevance/difficulty badges, hidden-selection notice with removable rows, Clear-all confirmation, disabled Bold with no selection, click-to-enlarge preview zoom overlay (Fit/100%/200%), landscape locked to a truthful 60x48.
-  - Engine fixes: landscape labels moved into BoardSpec (content-agnostic engine), honest infeasible result for non-60x48 landscape specs, real rail-rules quality report (replacing a fabricated value), dead gap machinery removed, bracket cap of 4, shared overlong-word splitter.
-  - 238 tests, TypeScript, and production build green at release. Deployed and spot-checked live.
-  - Documentation governance pass 2026-07-22: added `docs/product/README.md` index, status banners on historical/superseded product docs, `docs/product/2026-07-22-decision-register.md`, and a historical banner on `docs/REVIEW_HANDOFF.md`.
+- Done (today, commit range `ca17046..80aaf80`, all deployed to `jessemaddox.com/gameboard`):
+  - `33e1b00` review-pass fixes: family roster spellings (Kait, Bobbie, Caz, Shasha), relevance badges restored, occasion-hidden selections surfaced with notice + removable rows, Clear-all confirm, Bold no-op without selection, boot styling, occasion-keyed placeholders, dead CSS sweep, landscape locked to truthful 60x48, click-to-enlarge preview zoom (Fit/100%/200%). Engine: landscape labels moved into BoardSpec, honest non-60x48 infeasibility, real rail-rules quality report, dead gap code removed, bracket cap 4.
+  - `426fa27` docs governance: `docs/product/README.md` index, decision register, status banners on superseded docs.
+  - `80aaf80` US Letter (8.5x11) home-printer size: friendly size labels, size-aware grid start sizing, close-read quality grading (arm's-length advice, never "from a distance"), players floor lowered 8 to 2, exact 612x792pt PDF with all content inside 0.25in printer margins. Verified: 246 tests, typecheck, build; the concrete kids scenario (5 players, 10 activities) renders 10pt and grades good.
 
-- Pending:
-  - Human visual QA pass in a normal browser (the last release session's checks were automated layout invariants, production builds, and live HTTP checks, not a manual look).
-  - No other build work is queued for this repo. Future gameboard work should start from a fresh brainstorming/planning pass, not from resuming the challenge-game research docs here.
+- Pending — **build next: named save/load of board configurations** (Jesse, 2026-07-22, verbatim intent: save the current configuration at any point under a chosen name; reload via a dropdown; no privacy needed; he refuses to set up the kids board if a later app change can destroy it):
+  1. Store saved boards under a SEPARATE stable localStorage key (e.g. `game-board-saves-v1`) holding `{name, savedAt, schemaVersion, draft}` snapshots. Do NOT reuse the live-draft persist key `game-board-v5`: its versioned-key pattern deliberately orphans state on schema change, which is exactly the loss Jesse fears. On load, run the snapshot through the store's existing normalization (uid backfill, `enforceTemplateSize`) and tolerate older schemaVersions.
+  2. UI: Save (name prompt/inline field; confirm on overwrite of an existing name) and a Load dropdown of saved names. Loading must reuse the existing confirm-before-replace semantics that preset loading uses. Suggested surface: Setup step or header near "Start over". Delete-a-save is optional polish.
+  3. Tests: store-level save/list/load/overwrite + a step test. Cross-device sync is explicitly out of scope (localStorage is fine per Jesse).
 
-- Changed files (this doc-governance pass): `docs/product/README.md` (new), `docs/product/2026-07-22-decision-register.md` (new), status banners added to `docs/product/2026-07-18-beyond-the-board.md`, `docs/product/2026-07-18-starter-challenge-catalog.md`, `docs/product/2026-07-20-activity-seed-library.md`, banner and stale-fact fixes on `docs/REVIEW_HANDOFF.md`, this file. No `src/**` or `tests/**` changes.
+- Changed files: see `git log --oneline ca17046..80aaf80`; per-area diffs via `git diff ca17046..80aaf80 -- src/app` etc.
 
-- Verify command: In this repo, `npm test && npx tsc --noEmit && npm run build`. For the live release, `curl -fsS https://jessemaddox.com/gameboard` then fetch the referenced JS bundle from the returned HTML and `grep` it for a release-distinctive string such as `"Kait"` (the roster spelling fix). Do not verify against a pinned asset filename/hash; bundle hashes rot on every rebuild. For the challenge game, use the verify command in `/Users/jesse/claude/challenge-game/HANDOFF.md`.
+- Verify command: `npm test && npx tsc --noEmit && npm run build` (246 tests green at `80aaf80`). Live check: `curl -fsS https://jessemaddox.com/gameboard`, fetch the referenced JS bundle, grep for a release-distinctive string such as "Letter (home printer)". Never verify against a pinned asset hash.
 
-- Current risks:
-  - The `jessemaddox.com` repo (separate, at `/Users/jesse/claude/jessemaddox.com`) carries a large uncommitted site-rebuild from another session. Any gameboard publish must be a narrow, path-scoped commit plus a CLI deploy, never a bare `git push` on that repo. See that repo's own `HANDOFF.md` before touching it.
-  - This repo's own working tree may show as dirty in some environments due to sandboxing quirks with Git metadata; confirm actual state with `git status` rather than trusting stale notes.
+- Publish procedure (this repo to the live site): `npx vite build --base=/projects/gameboard/`, copy `dist/` over `~/claude/jessemaddox.com/projects/gameboard/`, commit ONLY that path in the site repo, then deploy with `~/.claude/bin/vercel-jessemaddox --prod --yes` from the site root. **Never bare `git push` the site repo** — it carries another session's large uncommitted site-rebuild that is live via CLI deploys; a push-triggered git deploy would revert it. Read the site repo's own `HANDOFF.md` first.
 
-- Do not repeat:
-  - Do not re-unify the gameboard's and challenge game's content systems or backends; that idea was explicitly dropped 2026-07-22.
-  - Do not rebuild or resume the challenge game from this repo's historical `docs/product/2026-07-21-challenge-*` and `2026-07-21-cooperative-rivalry-mechanics-library.md` docs; they are historical research only, superseded by the challenge-game repo's own docs.
-  - Do not publish the site via a bare `git push` in `/Users/jesse/claude/jessemaddox.com` until that repo's site-rebuild session has committed its pending work.
+- Current risks / known issues: none in this repo; tree clean at `80aaf80`, local == origin. Vite's large-chunk warning is pre-existing and non-blocking. Manual visual QA in a real browser remains lightly covered (automated invariants + headless checks only).
 
-- Suggested next step: Do the human visual QA pass on the live `/gameboard` release. If Jesse wants further gameboard work, start a fresh brainstorming pass rather than resuming any of the challenge-game-oriented docs in `docs/product/`.
+- Do not repeat: Do not re-unify the gameboard and challenge-game content systems (dropped 2026-07-22). Do not rebuild the challenge game from this repo's historical `docs/product/2026-07-21-*` research (superseded by the challenge-game repo's docs). Do not store saved boards inside the `game-board-v5` persist entry.
 
-- Last tool + date: Claude, 2026-07-22.
+- Suggested next step: Implement save/load exactly as scoped in Pending, verify, publish via the procedure above, and tell Jesse — he is waiting on it to build the kids weekend board (players: Jack, Bobbie, Shasha, Hunter, SG) and print it on Letter by 2026-07-23.
+
+- Last tool + date: Claude (Fable 5), 2026-07-22. Codex is now the writer; no Claude session is active on this repo.
