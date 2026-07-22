@@ -12,6 +12,18 @@ function enforceTemplateSize(draft: Draft): Draft {
   return draft;
 }
 
+/** Restore a complete, internally consistent draft from any persisted snapshot. */
+export function normalizeDraft(input: Partial<Draft>): Draft {
+  const draft = { ...defaultDraft(), ...input };
+  draft.activities = Array.isArray(draft.activities)
+    ? draft.activities.map((activity) => ({
+      ...activity,
+      uid: activity.uid ?? crypto.randomUUID(),
+    }))
+    : [];
+  return enforceTemplateSize(draft);
+}
+
 interface WizardState {
   draft: Draft;
   step: 0 | 1 | 2;
@@ -27,21 +39,18 @@ export const useWizardStore = create<WizardState>()(
       draft: defaultDraft(),
       step: 0,
       patch: (p) => set((s) => ({ draft: enforceTemplateSize({ ...s.draft, ...p }) })),
-      replaceDraft: (draft) => set({ draft: enforceTemplateSize(draft) }),
+      replaceDraft: (draft) => set({ draft: normalizeDraft(draft) }),
       setStep: (step) => set({ step }),
       reset: () => set({ draft: defaultDraft(), step: 0 }),
     }),
     // Versioned key: older saves used different setup and rules shapes.
     {
       name: 'game-board-v5',
-      // Deep-merge the persisted draft over defaults so newly-added Draft
-      // fields are backfilled from defaults instead of shipping undefined.
+      // Normalize persisted drafts so newly-added fields and editor-only row
+      // identities are restored through the same boundary as named saves.
       merge: (persisted, current) => {
         const p = persisted as Partial<WizardState> | undefined;
-        const draft = { ...current.draft, ...(p?.draft ?? {}) };
-        // Drafts persisted before activities carried a uid need one backfilled.
-        draft.activities = draft.activities.map((a) => ({ ...a, uid: a.uid ?? crypto.randomUUID() }));
-        return { ...current, ...p, draft: enforceTemplateSize(draft) };
+        return { ...current, ...p, draft: normalizeDraft(p?.draft ?? {}) };
       },
     },
   ),

@@ -24,7 +24,7 @@ if (typeof globalThis.window === 'undefined') {
   (globalThis as Record<string, unknown>).window = globalThis;
 }
 
-const { useWizardStore } = await import('../../src/store/wizardStore');
+const { normalizeDraft, useWizardStore } = await import('../../src/store/wizardStore');
 const { createJesse2017Draft } = await import('../../src/content/occasions');
 
 describe('wizardStore', () => {
@@ -71,8 +71,22 @@ describe('wizardStore', () => {
     replacement.honoree = 'Jesse';
     replacement.players = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
     useWizardStore.getState().replaceDraft(replacement);
-    expect(useWizardStore.getState().draft).toBe(replacement);
+    expect(useWizardStore.getState().draft).toEqual(replacement);
     expect(useWizardStore.getState().draft.honoree).toBe('Jesse');
+  });
+
+  it('normalizes partial drafts through the shared restoration boundary', () => {
+    const normalized = normalizeDraft({
+      title: 'Legacy board',
+      template: 'landscapeBrackets',
+      posterSize: '18x24',
+      activities: [{ name: 'Legacy activity', points: 1, bonus: false }],
+    } as Parameters<typeof normalizeDraft>[0]);
+
+    expect(normalized.title).toBe('Legacy board');
+    expect(normalized.rulesTitle).toBe('GAME RULES:');
+    expect(normalized.activities[0]?.uid).toEqual(expect.any(String));
+    expect(normalized.posterSize).toBe('60x48');
   });
 
   it('persists via the storage key with a schema version', () => {
