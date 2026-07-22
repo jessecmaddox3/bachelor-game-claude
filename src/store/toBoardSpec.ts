@@ -87,7 +87,7 @@ export interface FieldError {
 export type SpecResult = { ok: true; spec: BoardSpec } | { ok: false; errors: FieldError[] };
 
 const FRIENDLY: Array<[RegExp, (path: string) => string]> = [
-  [/^players$/, () => 'Add at least 8 players (35 max).'],
+  [/^players$/, () => 'Add at least 2 players (35 max).'],
   [/^activities$/, () => 'Add at least 5 activities (80 max).'],
   [/points$/, () => 'Points must be a whole number, a range like "1 to 6", or TBD.'],
 ];

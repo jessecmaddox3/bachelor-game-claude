@@ -1,6 +1,7 @@
 import type { BoardSpec } from '../../models/boardSpec';
 import { pointsLabel } from '../../models/boardSpec';
 import type { Box } from '../geometry';
+import { PT_PER_IN } from '../geometry';
 import type { FontMetrics } from '../fonts/metrics';
 import { wrapToWidth, hardEllipsize } from './wrap';
 
@@ -62,16 +63,36 @@ export type SolveResult = GridLayout | Infeasible;
  * tried and every solved bodyPt is a clean 0.5 multiple.
  */
 export function solveGrid(grid: Box, spec: BoardSpec, m: FontMetrics): SolveResult {
-  const startPt = Math.min(20, Math.max(FLOOR_PT, Math.floor(grid.h * 0.7 * 2) / 2));
+  // grid.h*0.7 maps a poster's tall grid to a sane starting pt, but it
+  // degenerates on a small home-printer sheet (Letter's grid is ~7in, so the
+  // term lands below FLOOR_PT and collapses the whole ladder to a single 9pt
+  // rung — even a nearly empty Letter board would render at the 9pt floor).
+  // When it degenerates, start instead from the vertical space one single-line
+  // row can afford. This overshoots when the layout is width-constrained, which
+  // is safe: the ladder only ever steps DOWN to the first size that fits.
+  // Posters keep heightStart >= 12.5 (>= FLOOR_PT) and never enter the branch,
+  // so their solved sizes are byte-identical to before.
+  const heightStart = Math.floor(grid.h * 0.7 * 2) / 2;
+  let start = heightStart;
+  if (heightStart < FLOOR_PT) {
+    const rowCount = spec.activities.length + spec.writeInRows + (spec.honoreeBonusRow ? 1 : 0) + 1;
+    const perRowIn = (grid.h * 0.8) / (rowCount + 1);
+    // Cap the small-sheet start at 16pt: beyond that, body text on a Letter page
+    // read at arm's length is oversized and wastes the sheet (16pt is already
+    // large-print). A sparse Letter board lands large-but-balanced, not cartoonish.
+    start = Math.min(16, (perRowIn * PT_PER_IN) / 1.3);
+  }
+  const startPt = Math.min(20, Math.max(FLOOR_PT, start));
   for (let pt = startPt; pt >= FLOOR_PT; pt -= 0.5) {
     const layout = tryFit(grid, spec, m, pt);
     if (layout) return layout;
   }
+  const surface = spec.posterSize === '8.5x11' ? `an ${spec.posterSize} letter sheet` : `a ${spec.posterSize} poster`;
   return {
     feasible: false,
     reason:
       `${spec.players.length} players and ${spec.activities.length} activities cannot fit legibly ` +
-      `on a ${spec.posterSize} poster. Choose a larger size or remove players/activities.`,
+      `on ${surface}. Choose a larger size or remove players/activities.`,
   };
 }
 

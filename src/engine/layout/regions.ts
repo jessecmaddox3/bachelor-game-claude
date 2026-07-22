@@ -49,7 +49,13 @@ export function partitionRegions(spec: BoardSpec): Regions {
   const margin = clamp(pageH * 0.015, 0.5, 1.0);
   const content: Box = { x: margin, y: margin, w: pageW - 2 * margin, h: pageH - 2 * margin };
 
-  const headerH = clamp(pageH * 0.11, 2.2, 6);
+  // Title band = 11% of page height, floored so it never collapses. The floor
+  // was lowered 2.2 -> 1.1 for the Letter sheet: at 11in the natural band is
+  // pageH*0.11 = 1.21in, but the old 2.2in floor forced it up to 2.2in — a fifth
+  // of the page eaten by the masthead. 1.1in doesn't bind at any real size
+  // (every poster is pageH >= 18, and even Letter's 1.21in clears it), so
+  // posters are untouched; it's just a safe lower bound.
+  const headerH = clamp(pageH * 0.11, 1.1, 6);
   const rulesH = spec.rulesContent.trim() || spec.rules.length > 0 || Boolean(spec.footnote) ? clamp(pageH * 0.07, 1.5, 4) : 0;
 
   const bodyTop = content.y + headerH + REGION_GAP;

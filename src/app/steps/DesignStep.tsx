@@ -3,7 +3,7 @@ import { useWizardStore } from '../../store/wizardStore';
 import { THEME_PRESETS } from '../../content/themes';
 import { parsePointsInput, toBoardSpec } from '../../store/toBoardSpec';
 import { buildBoard, planPngScale, POSTER_SIZES, type FontMetrics, type FontBuffers, type PosterSizeId } from '../../engine';
-import { pointsLabel } from '../../models/boardSpec';
+import { pointsLabel, POSTER_SIZE_LABELS } from '../../models/boardSpec';
 import { exportPdf, exportPng, exportSvg } from '../export';
 import type { BoardState } from '../useBoard';
 
@@ -110,8 +110,8 @@ export function DesignStep({ board, metrics, buffers }: { board: BoardState; met
             <p className="poster-size-fixed">60 × 48 in (fixed for this layout)</p>
           ) : (
             <select id="size" value={draft.posterSize} onChange={(event) => patch({ posterSize: event.target.value as PosterSizeId })}>
-              {Object.keys(POSTER_SIZES).map((size) => (
-                <option key={size} value={size}>{size.replace('x', '" × ')}"</option>
+              {(Object.keys(POSTER_SIZES) as PosterSizeId[]).map((size) => (
+                <option key={size} value={size}>{POSTER_SIZE_LABELS[size]}</option>
               ))}
             </select>
           )}

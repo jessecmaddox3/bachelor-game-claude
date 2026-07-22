@@ -85,7 +85,7 @@ describe('toBoardSpec', () => {
     const r = toBoardSpec(d);
     expect(r.ok).toBe(false);
     if (r.ok) return;
-    expect(r.errors.some((e) => e.field === 'players' && /at least 8/i.test(e.message))).toBe(true);
+    expect(r.errors.some((e) => e.field === 'players' && /at least 2/i.test(e.message))).toBe(true);
   });
 
   it('maps an empty required string to a fill-this-in message', () => {

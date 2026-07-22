@@ -1,6 +1,9 @@
 import { z } from 'zod';
 
 export const POSTER_SIZES = {
+  // 8.5x11 is the only home-printer size: it targets an exact US Letter page so
+  // the PDF prints edge-correct at 100%. The rest are large-format poster sizes.
+  '8.5x11': { w: 8.5, h: 11 },
   '18x24': { w: 18, h: 24 },
   '24x36': { w: 24, h: 36 },
   '36x48': { w: 36, h: 48 },
@@ -11,6 +14,16 @@ export const POSTER_SIZES = {
 export type PosterSizeId = keyof typeof POSTER_SIZES;
 
 export const POSTER_SIZE_IDS = Object.keys(POSTER_SIZES) as [PosterSizeId, ...PosterSizeId[]];
+
+/** Friendly dropdown labels; the raw keys are dimensions, not human-readable use cases. */
+export const POSTER_SIZE_LABELS: Record<PosterSizeId, string> = {
+  '8.5x11': '8.5 × 11 in — Letter (home printer)',
+  '18x24': '18 × 24 in — Small poster',
+  '24x36': '24 × 36 in — Standard poster',
+  '36x48': '36 × 48 in — Large poster',
+  '48x72': '48 × 72 in — Extra-large poster',
+  '60x48': '60 × 48 in — Wide poster',
+};
 
 export const pointsValueSchema = z.union([
   z.number().int().min(-99).max(999),
@@ -35,7 +48,9 @@ export const boardSpecSchema = z.object({
   /** Legacy second masthead line. New boards leave this blank and use title + subtitle. */
   honoree: z.string().max(30).default(''),
   subtitle: z.string().max(80).optional(),
-  players: z.array(z.string().min(1).max(24)).min(8).max(35),
+  // Floor of 2: the smallest meaningful competition. Lowered from 8 so small
+  // groups (e.g. a 5-person Kids Weekend on Letter) are valid boards.
+  players: z.array(z.string().min(1).max(24)).min(2).max(35),
   activities: z
     .array(
       z.object({

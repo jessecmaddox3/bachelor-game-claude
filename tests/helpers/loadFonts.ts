@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
-import { FontMetrics } from '../../src/engine/fonts/metrics';
+import { FontMetrics, type FontBuffers } from '../../src/engine/fonts/metrics';
 
 // Under the jsdom test environment import.meta.url is an http:// URL, so fall
 // back to the project root (vitest's cwd) instead of fileURLToPath.
@@ -14,15 +14,20 @@ function ab(name: string): ArrayBuffer {
   return b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength) as ArrayBuffer;
 }
 
-let cached: FontMetrics | null = null;
-
-export function testMetrics(): FontMetrics {
-  cached ??= new FontMetrics({
+/** Fresh font buffers each call (pdf-lib may detach buffers it embeds). */
+export function fontBuffers(): FontBuffers {
+  return {
     display: ab('ArchivoBlack-Regular.ttf'),
     body: ab('Lato-Regular.ttf'),
     bodyBold: ab('Lato-Bold.ttf'),
     landscape: ab('Montserrat-Regular.ttf'),
     landscapeBold: ab('Montserrat-Bold.ttf'),
-  });
+  };
+}
+
+let cached: FontMetrics | null = null;
+
+export function testMetrics(): FontMetrics {
+  cached ??= new FontMetrics(fontBuffers());
   return cached;
 }

@@ -21,6 +21,6 @@ describe('useBoard', () => {
     await waitFor(() => expect(result.current.status).toBe('invalid'), { timeout: 5000 });
     if (result.current.status !== 'invalid') return;
     expect(result.current.errors.length).toBeGreaterThan(0);
-    expect(result.current.errors[0]!.message).toContain('at least 8');
+    expect(result.current.errors[0]!.message).toContain('at least 2');
   });
 });

@@ -21,8 +21,12 @@ describe('boardSpecSchema', () => {
     expect(spec.activities[5].bonus).toBe(true);
   });
 
-  it('rejects fewer than 8 players', () => {
-    expect(() => makeSpec({ players: ['A', 'B', 'C'] })).toThrow();
+  it('rejects fewer than 2 players', () => {
+    expect(() => makeSpec({ players: ['A'] })).toThrow();
+  });
+
+  it('accepts a small group (5 players) for a home-printer board', () => {
+    expect(() => makeSpec({ players: ['Jack', 'Bobbie', 'Shasha', 'Hunter', 'SG'] })).not.toThrow();
   });
 
   it('rejects more than 80 activities', () => {

@@ -45,9 +45,10 @@ export function buildBoard(input: unknown, m: FontMetrics): BuildResult {
   if (regions.rules) {
     const planned = planRules(spec, regions.rules, m);
     if (!planned) {
+      const surface = spec.posterSize === '8.5x11' ? `an ${spec.posterSize} letter sheet` : `a ${spec.posterSize} poster`;
       return {
         ok: false,
-        reason: `The rules do not fit legibly on a ${spec.posterSize} poster. Choose a larger size or shorten the rules.`,
+        reason: `The rules do not fit legibly on ${surface}. Choose a larger size or shorten the rules.`,
       };
     }
     rulesPlan = planned;
