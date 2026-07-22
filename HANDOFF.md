@@ -1,36 +1,33 @@
 # Handoff
 
-- Original goal: Rebuild Jesse's 2017 bachelor game board as a shelf-stable poster generator, simplify the builder from real-world feedback, and preserve the challenge research for a three-brother mobile web game.
+- Original goal: Rebuild Jesse's 2017 bachelor game board as a shelf-stable poster generator, simplify the builder from real-world feedback, and preserve the challenge research that seeded a separate three-brother mobile web game.
 
-- Current phase: The condensed gameboard release is live at `https://jessemaddox.com/gameboard`. Challenge Lab Tasks 1 through 6 are complete and accepted in `/Users/jesse/claude/challenge-game`; Task 7 is next.
+- Current phase: The gameboard is content-complete. The 2026-07-22 review-pass release (commit `33e1b00`) is pushed and deployed to `https://jessemaddox.com/gameboard`. For the challenge game (`/Users/jesse/claude/challenge-game`, live at `jessemaddox.com/challenge-lab`), that repo's own `HANDOFF.md` is authoritative; do not restate its task status here. The two products are intentionally separate (see `docs/product/2026-07-22-decision-register.md`).
 
 - Done:
-  - New boards start as `Kids Weekend` with the sorted family roster and no activities.
-  - Setup now contains occasion, Title, Subtitle, and Participants only. Number ornaments were removed, occasion labels use capitalized emoji copy, wide layouts use four occasion columns, and added or edited participants stay alphabetized.
-  - The complete historical board remains available as `My Bachelor Party Weekend`, with confirmation before it replaces any customized draft field.
-  - Activity selection uses a compact two-column checkbox browser, occasion-ranked ideas, selected-only filtering, `Clear all`, and a lightweight custom-idea form. Wording and points editing moved to Design.
-  - Poster size moved to Design. New-board export filenames fall back to Title when no legacy honoree exists.
-  - Rules use one title and one safe rich-text-lite document. Paragraphs, paired bold spans, and measured bullets render in portrait and landscape, including hanging indents and honest fit failures.
-  - Portrait and landscape cell text is measured independently. Sparse boards grow type, long unspaced labels wrap without dropped characters, and an unfittable landscape returns a generic content-fit message instead of an overflowing scene.
-  - Full verification passed: 23 test files, 225 tests, TypeScript, Vite production build, and source `git diff --check`.
-  - Independent re-review confirmed all original Important findings were fixed. A final wording defect in the landscape fit error was then fixed and covered.
-  - Published website commit `7343189`; live HTML serves `assets/index-Mv37He1A.js`, and HTTP checks confirmed the expected new UI copy.
-  - Challenge Lab Task 4 is accepted at `0e14ba0`. Task 5 identity and synchronization is accepted at `41368c3`, with 110 tests, typecheck, production and API builds, and a clean worktree.
-  - Challenge Lab Task 6 full-catalog seeding is accepted at `fe42669`. It enforces exactly five categories, exposes all 18 challenge cards in each, requires one calibrated seed per category, blocks submission without two weekly-eligible choices, constructs a valid private seed event, and reveals only readiness in the waiting room. Its full suite has 118 passing tests.
+  - Setup, Activities, and Design steps redesigned and shipped (blue visual system, per-occasion seed library, chip-based player entry).
+  - Review-pass release `33e1b00`: family roster spelling fixes (Kait, Bobbie, Caz, Shasha), restored relevance/difficulty badges, hidden-selection notice with removable rows, Clear-all confirmation, disabled Bold with no selection, click-to-enlarge preview zoom overlay (Fit/100%/200%), landscape locked to a truthful 60x48.
+  - Engine fixes: landscape labels moved into BoardSpec (content-agnostic engine), honest infeasible result for non-60x48 landscape specs, real rail-rules quality report (replacing a fabricated value), dead gap machinery removed, bracket cap of 4, shared overlong-word splitter.
+  - 238 tests, TypeScript, and production build green at release. Deployed and spot-checked live.
+  - Documentation governance pass 2026-07-22: added `docs/product/README.md` index, status banners on historical/superseded product docs, `docs/product/2026-07-22-decision-register.md`, and a historical banner on `docs/REVIEW_HANDOFF.md`.
 
 - Pending:
-  - Challenge Lab Task 7: build control, delegation, conflict resolution, and week lock.
-  - Challenge Lab Task 10 must route production writes through Apps Script `LockService` before deployment because cross-request compare-and-swap remains intentionally deferred.
-  - Perform a human visual pass in a normal browser when convenient. The in-app browser runtime was unavailable in this session, so release verification used automated layout invariants, production builds, and live HTTP checks.
+  - Human visual QA pass in a normal browser (the last release session's checks were automated layout invariants, production builds, and live HTTP checks, not a manual look).
+  - No other build work is queued for this repo. Future gameboard work should start from a fresh brainstorming/planning pass, not from resuming the challenge-game research docs here.
 
-- Changed files: Gameboard UI, defaults, activity catalog, historical preset, safe rules parser and renderer, adaptive layout helpers, export naming, regression tests, July 2026 product research, approved design specs, and implementation plans. Challenge Lab Task 5 changed its API client, Zustand store, identity gate, status banner, App integration, and tests in the separate `challenge-game` repo.
+- Changed files (this doc-governance pass): `docs/product/README.md` (new), `docs/product/2026-07-22-decision-register.md` (new), status banners added to `docs/product/2026-07-18-beyond-the-board.md`, `docs/product/2026-07-18-starter-challenge-catalog.md`, `docs/product/2026-07-20-activity-seed-library.md`, banner and stale-fact fixes on `docs/REVIEW_HANDOFF.md`, this file. No `src/**` or `tests/**` changes.
 
-- Verify command: In this repo run `npm test && npm run build && git diff --check`. For the live release run `curl -fsS https://jessemaddox.com/gameboard | rg 'index-Mv37He1A.js'`. In `/Users/jesse/claude/challenge-game`, run `npm test && npm run typecheck && npm run build`.
+- Verify command: In this repo, `npm test && npx tsc --noEmit && npm run build`. For the live release, `curl -fsS https://jessemaddox.com/gameboard` then fetch the referenced JS bundle from the returned HTML and `grep` it for a release-distinctive string such as `"Kait"` (the roster spelling fix). Do not verify against a pinned asset filename/hash; bundle hashes rot on every rebuild. For the challenge game, use the verify command in `/Users/jesse/claude/challenge-game/HANDOFF.md`.
 
-- Current risks / known issues: The local gameboard worktree still appears dirty because this environment cannot write the source repository's Git metadata. The same verified files are saved to GitHub through an isolated writable clone. Vite reports non-blocking large-chunk warnings. Tests print a pre-existing non-blocking Node `--localstorage-file` warning.
+- Current risks:
+  - The `jessemaddox.com` repo (separate, at `/Users/jesse/claude/jessemaddox.com`) carries a large uncommitted site-rebuild from another session. Any gameboard publish must be a narrow, path-scoped commit plus a CLI deploy, never a bare `git push` on that repo. See that repo's own `HANDOFF.md` before touching it.
+  - This repo's own working tree may show as dirty in some environments due to sandboxing quirks with Git metadata; confirm actual state with `git status` rather than trusting stale notes.
 
-- Do not repeat: Do not rebuild Tasks 1 through 6 of Challenge Lab. Do not remove the historical preset or flatten its source-faithful landscape hierarchy. Do not publish from the dirty local `jessemaddox.com` checkout; use an isolated clone and stage only `projects/gameboard`.
+- Do not repeat:
+  - Do not re-unify the gameboard's and challenge game's content systems or backends; that idea was explicitly dropped 2026-07-22.
+  - Do not rebuild or resume the challenge game from this repo's historical `docs/product/2026-07-21-challenge-*` and `2026-07-21-cooperative-rivalry-mechanics-library.md` docs; they are historical research only, superseded by the challenge-game repo's own docs.
+  - Do not publish the site via a bare `git push` in `/Users/jesse/claude/jessemaddox.com` until that repo's site-rebuild session has committed its pending work.
 
-- Suggested next step: Implement and review Challenge Lab Task 7, then exercise the selection and lock mechanics across three local identities before adding results and debrief screens.
+- Suggested next step: Do the human visual QA pass on the live `/gameboard` release. If Jesse wants further gameboard work, start a fresh brainstorming pass rather than resuming any of the challenge-game-oriented docs in `docs/product/`.
 
-- Last tool + date: Codex with bounded implementation and read-only review agents, 2026-07-21.
+- Last tool + date: Claude, 2026-07-22.

@@ -1,5 +1,10 @@
 # Activity Seed Library (per occasion)
 
+> **Status, 2026-07-22:** Active for the gameboard, with a caveat. The shipped data in
+> `src/content/activitySeeds.ts` is the source of truth. During the build (2026-07-20/21) several
+> rows were consent-softened and some seeds were consolidated, so this document describes intent,
+> not the exact shipped text.
+
 Companion to `2026-07-20-setup-and-activities-redesign-HANDOFF.md`. This is the
 event-specific challenge content to wire into `src/content/activities.ts`.
 

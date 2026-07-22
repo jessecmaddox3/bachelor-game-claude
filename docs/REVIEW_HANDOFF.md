@@ -1,5 +1,9 @@
 # Review Handoff: Setup and Activities Release
 
+> **Status, 2026-07-22:** Review executed. All findings from this review were fixed in commit
+> `33e1b00` (the review-pass release, deployed to `jessemaddox.com/gameboard`). This document is
+> retained as a historical record of the review, not as an open task list.
+
 Branch: local `main`. Review the uncommitted working tree against `77d3fd1`.
 
 ## TL;DR: What to Review
@@ -27,7 +31,7 @@ Pre-existing engine, renderer, font, export, occasion-pack, and product-document
 
 ## Design of the Key Part
 
-`defaultDraft()` now starts with blank title, honoree, players, and activities. The persisted storage key moves to `game-board-v4`, which deliberately prevents v3 filler rows from surviving the redesign.
+`defaultDraft()` now starts as `Kids Weekend` with a blank honoree, the sorted family roster as players, and no activities. The persisted storage key is `game-board-v5`, which deliberately prevents older filler rows from surviving the redesign.
 
 Setup owns `draft.libraryOccasion`. Activities reads that value and no longer asks the occasion again. Player entry accepts Enter, comma-separated paste, and multiline paste, then renders removable chips with inline editing. Saved boards remain an explicit optional replacement path.
 

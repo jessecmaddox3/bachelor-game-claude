@@ -1,5 +1,11 @@
 # Beyond the Board: Product Direction
 
+> **Status, 2026-07-22:** Historical reference. The "one library, many formats" architecture
+> proposed here was abandoned when the gameboard and the challenge game were confirmed as
+> intentionally separate products. See `README.md` in this directory and
+> `2026-07-22-decision-register.md` for what replaced it and how the Human Review Questions below
+> were resolved.
+
 > **TL;DR:** The bachelor board is the first format, not the whole product. The larger idea is a system of specific, well-designed invitations that help people escape boredom, try unfamiliar things, contribute to a group, and create stories together. Keep the board builder excellent and stable, then build a challenge library that can power kids' afternoons, family weekends, friend trips, personal experiments, and recurring community circles.
 
 ## Recommendation

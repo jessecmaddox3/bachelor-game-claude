@@ -1,5 +1,9 @@
 # Starter Challenge Catalog
 
+> **Status, 2026-07-22:** Superseded. This 100-item draft catalog and its "Spark/Try/Stretch/Quest"
+> ladder were superseded by the challenge atlas work. The canonical challenge catalog now lives in
+> `/Users/jesse/claude/challenge-game` (see that repo's `PROJECT-INTENT.md` and `MECHANICS-DECISIONS.md`).
+
 > **TL;DR:** This is a human-review catalog of 100 specific challenge ideas across kids, families, adult groups, personal experiments, contribution, and controlled wildness. The language is intentionally concrete enough to become product data later. Points use 1 Spark, 2 Try, 3 Stretch, and 5 Quest. All photo or video evidence is optional.
 
 ## How to Review This Catalog
