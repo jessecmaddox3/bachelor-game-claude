@@ -38,12 +38,24 @@ describe('wizardStore', () => {
     expect(s.draft.title).toBe('Kids Weekend');
     expect(s.draft.honoree).toBe('');
     expect(s.draft.players).toEqual([
-      'Bo', 'Bobby', 'Brett', 'Coco', 'Eleanor', 'Hunter', 'Jack', 'Jess', 'Kate', 'Kaz',
-      'Mary', 'Nona', 'Rachel', 'SG', 'Shay Shay', 'Steven',
+      'Bo', 'Bobbie', 'Brett', 'Caz', 'Coco', 'Eleanor', 'Hunter', 'Jack', 'Jess', 'Kait',
+      'Mary', 'Nona', 'Rachel', 'SG', 'Shasha', 'Steven',
     ]);
     expect(s.draft.activities).toEqual([]);
     expect(s.draft.libraryOccasion).toBe('kids-weekend');
     expect(s.draft.posterSize).toBe('24x36');
+  });
+
+  it('locks the poster size to 60×48 whenever the landscape-brackets template is active', () => {
+    // Switching to the fixed 60×48 landscape layout forces the size to match,
+    // even if a mismatched size is patched in the same or a later update.
+    useWizardStore.getState().patch({ template: 'landscapeBrackets', posterSize: '18x24' });
+    expect(useWizardStore.getState().draft.posterSize).toBe('60x48');
+    useWizardStore.getState().patch({ posterSize: '24x36' });
+    expect(useWizardStore.getState().draft.posterSize).toBe('60x48');
+    // Portrait boards can still choose any size.
+    useWizardStore.getState().patch({ template: 'portrait', posterSize: '24x36' });
+    expect(useWizardStore.getState().draft.posterSize).toBe('24x36');
   });
 
   it('patches the draft immutably', () => {

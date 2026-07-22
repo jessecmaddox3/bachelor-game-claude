@@ -48,7 +48,7 @@ Rename `Add the players` to `Participants` and `Add players` to `Add participant
 
 The new default roster is:
 
-`Jess, Kate, Jack, Bobby, Kaz, Brett, Rachel, Bo, Eleanor, Hunter, SG, Coco, Nona, Shay Shay, Steven, Mary`
+`Jess, Kait, Jack, Bobbie, Caz, Brett, Rachel, Bo, Eleanor, Hunter, SG, Coco, Nona, Shasha, Steven, Mary`
 
 The default occasion is Kids Weekend. The default has no selected activities, so the visitor can go directly to the fun selection step.
 

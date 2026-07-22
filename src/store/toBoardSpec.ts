@@ -31,8 +31,8 @@ export type Draft = {
 };
 
 export const DEFAULT_PARTICIPANTS = [
-  'Jess', 'Kate', 'Jack', 'Bobby', 'Kaz', 'Brett', 'Rachel', 'Bo',
-  'Eleanor', 'Hunter', 'SG', 'Coco', 'Nona', 'Shay Shay', 'Steven', 'Mary',
+  'Jess', 'Kait', 'Jack', 'Bobbie', 'Caz', 'Brett', 'Rachel', 'Bo',
+  'Eleanor', 'Hunter', 'SG', 'Coco', 'Nona', 'Shasha', 'Steven', 'Mary',
 ].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
 
 export function sortParticipantNames(names: readonly string[]): string[] {

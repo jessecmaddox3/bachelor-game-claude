@@ -48,3 +48,28 @@ export function gradeLayout(layout: GridLayout, spec: BoardSpec): QualityReport 
   if (grade === 'good') advice.push('Readable at a comfortable distance. Good to print.');
   return { grade, bodyPt: layout.bodyPt, advice };
 }
+
+/**
+ * The landscape/brackets rail squeezes its rules between a 4.5pt ceiling and a
+ * 3.5pt floor. Report the size actually used and grade it honestly against that
+ * range (mirroring the portrait grader's spirit), rather than a fixed placeholder.
+ */
+export const LANDSCAPE_RULES_MAX_PT = 4.5;
+export const LANDSCAPE_RULES_FLOOR_PT = 3.5;
+
+export function gradeLandscapeRules(rulesPt: number): QualityReport {
+  let grade: Grade;
+  if (rulesPt <= LANDSCAPE_RULES_FLOOR_PT) grade = 'poor';
+  else if (rulesPt >= LANDSCAPE_RULES_MAX_PT) grade = 'good';
+  else grade = 'tight';
+
+  const advice: string[] = [];
+  if (grade === 'poor') {
+    advice.push(`Rules are at the ${rulesPt}pt minimum and may be hard to read up close. Shorten the rules.`);
+  } else if (grade === 'tight') {
+    advice.push(`Everything fits but the rules are dense (${rulesPt}pt). Shorten the rules for more breathing room.`);
+  } else {
+    advice.push('Landscape / Brackets layout rendered comfortably. Good to print.');
+  }
+  return { grade, bodyPt: rulesPt, advice };
+}

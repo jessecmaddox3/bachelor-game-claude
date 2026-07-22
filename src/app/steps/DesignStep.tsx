@@ -25,7 +25,14 @@ export function DesignStep({ board, metrics, buffers }: { board: BoardState; met
   const { draft, patch, setStep } = useWizardStore();
   const [busy, setBusy] = useState<string | null>(null);
   const [note, setNote] = useState('');
+  // Bold only makes sense with a selection; track it so the button can signal
+  // when it's a no-op instead of inserting empty `****` markers into the rules.
+  const [rulesSelectionEmpty, setRulesSelectionEmpty] = useState(true);
   const rulesEditor = useRef<HTMLTextAreaElement>(null);
+  const syncRulesSelection = () => {
+    const editor = rulesEditor.current;
+    setRulesSelectionEmpty(!editor || editor.selectionStart === editor.selectionEnd);
+  };
   const setTheme = (p: Partial<typeof draft.theme>) => patch({ theme: { ...draft.theme, ...p } });
   const setActivity = (i: number, changes: Partial<typeof draft.activities[number]>) =>
     patch({ activities: draft.activities.map((row, j) => (j === i ? { ...row, ...changes } : row)) });
@@ -35,6 +42,8 @@ export function DesignStep({ board, metrics, buffers }: { board: BoardState; met
     if (!editor) return;
     const start = editor.selectionStart;
     const end = editor.selectionEnd;
+    // Bold with no selection would inject a bare `****`; make it a safe no-op.
+    if (kind === 'bold' && start === end) return;
     const selected = draft.rulesContent.slice(start, end);
     const replacement = kind === 'bold'
       ? `**${selected}**`
@@ -96,12 +105,16 @@ export function DesignStep({ board, metrics, buffers }: { board: BoardState; met
           <div><h3 id="theme-heading">Theme</h3><p>Start with a preset, then tune only what matters.</p></div>
         </div>
         <div className="field poster-size-field">
-          <label htmlFor="size">Poster size</label>
-          <select id="size" value={draft.posterSize} onChange={(event) => patch({ posterSize: event.target.value as PosterSizeId })}>
-            {Object.keys(POSTER_SIZES).map((size) => (
-              <option key={size} value={size}>{size.replace('x', '" × ')}"</option>
-            ))}
-          </select>
+          <label htmlFor={draft.template === 'landscapeBrackets' ? undefined : 'size'}>Poster size</label>
+          {draft.template === 'landscapeBrackets' ? (
+            <p className="poster-size-fixed">60 × 48 in (fixed for this layout)</p>
+          ) : (
+            <select id="size" value={draft.posterSize} onChange={(event) => patch({ posterSize: event.target.value as PosterSizeId })}>
+              {Object.keys(POSTER_SIZES).map((size) => (
+                <option key={size} value={size}>{size.replace('x', '" × ')}"</option>
+              ))}
+            </select>
+          )}
         </div>
         <div className="theme-presets">
           {THEME_PRESETS.map((p) => (
@@ -190,7 +203,15 @@ export function DesignStep({ board, metrics, buffers }: { board: BoardState; met
         </div>
         <div className="rules-content-shell">
           <div className="rules-toolbar" aria-label="Rules formatting">
-            <button className="ghost compact-button" type="button" aria-label="Bold" onMouseDown={(event) => event.preventDefault()} onClick={() => formatRules('bold')}><strong>B</strong></button>
+            <button
+              className="ghost compact-button"
+              type="button"
+              aria-label="Bold"
+              aria-disabled={rulesSelectionEmpty}
+              title={rulesSelectionEmpty ? 'Select text to bold' : 'Bold selected text'}
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => formatRules('bold')}
+            ><strong>B</strong></button>
             <button className="ghost compact-button" type="button" aria-label="Bulleted list" onMouseDown={(event) => event.preventDefault()} onClick={() => formatRules('bullets')}>• List</button>
             <span>Supports bold headings and simple lists.</span>
           </div>
@@ -201,6 +222,10 @@ export function DesignStep({ board, metrics, buffers }: { board: BoardState; met
             value={draft.rulesContent}
             maxLength={50000}
             onChange={(event) => patch({ rulesContent: event.target.value })}
+            onSelect={syncRulesSelection}
+            onKeyUp={syncRulesSelection}
+            onMouseUp={syncRulesSelection}
+            onBlur={syncRulesSelection}
             placeholder="Add the rules, notes, or agreement for this board."
           />
         </div>

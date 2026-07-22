@@ -1,8 +1,22 @@
 import { useRef, useState } from 'react';
 import { useWizardStore } from '../../store/wizardStore';
-import { ACTIVITY_OCCASIONS, ACTIVITY_OCCASION_LABELS } from '../../content/activities';
+import { ACTIVITY_OCCASIONS, ACTIVITY_OCCASION_LABELS, type ActivityOccasion } from '../../content/activities';
 import { OCCASION_PACKS, occasionById } from '../../content/occasions';
 import { defaultDraft, sortParticipantNames } from '../../store/toBoardSpec';
+
+// Obviously-example (never personal) titles so the placeholder matches the
+// chosen occasion instead of assuming a specific person's bachelor weekend.
+const TITLE_PLACEHOLDERS: Record<ActivityOccasion, string> = {
+  bachelor: 'The Lake House Bachelor Weekend',
+  bachelorette: 'The City Bachelorette Weekend',
+  'kids-weekend': 'Cousins Camp Weekend',
+  anniversary: 'Our Anniversary Weekend',
+  'family-reunion': 'The Summer Family Reunion',
+  'friends-weekend': 'The Annual Friends Weekend',
+  'beach-trip': 'The Beach House Games',
+  general: 'The Weekend Games',
+};
+const SUBTITLE_PLACEHOLDER = 'June 12–14 · Lake Cabin';
 
 function playerNames(value: string): string[] {
   return value
@@ -112,11 +126,11 @@ export function SetupStep() {
         <div className="setup-grid">
           <div className="field">
             <label htmlFor="title">Title</label>
-            <input id="title" value={draft.title} onChange={(event) => patch({ title: event.target.value })} maxLength={60} placeholder="The Bachelor Weekend of Jesse Cordell Maddox III" />
+            <input id="title" value={draft.title} onChange={(event) => patch({ title: event.target.value })} maxLength={60} placeholder={TITLE_PLACEHOLDERS[draft.libraryOccasion]} />
           </div>
           <div className="field">
             <label htmlFor="subtitle">Subtitle</label>
-            <input id="subtitle" value={draft.subtitle} onChange={(event) => patch({ subtitle: event.target.value })} maxLength={80} placeholder="October 19th - 22nd, 2022 - Blue Ridge, GA" />
+            <input id="subtitle" value={draft.subtitle} onChange={(event) => patch({ subtitle: event.target.value })} maxLength={80} placeholder={SUBTITLE_PLACEHOLDER} />
           </div>
         </div>
       </section>

@@ -55,7 +55,23 @@ export const boardSpecSchema = z.object({
     title: z.string().min(1).max(50),
     slots: z.union([z.literal(8), z.literal(16)]),
     teamSize: z.union([z.literal(1), z.literal(2)]).default(1),
-  })).max(6).default([]),
+  })).max(4, 'The Landscape / Brackets layout fits at most 4 brackets on a 60x48 poster.').default([]),
+  /**
+   * Section labels for the landscapeBrackets template. Defaults reproduce the
+   * original 2017 board so existing specs render byte-identically; the engine
+   * reads these instead of embedding event-specific literals. gameHeading is
+   * rendered one whitespace-delimited word per stacked line.
+   */
+  landscapeLabels: z
+    .object({
+      gameHeading: z.string().max(40).default('THE GAME'),
+      activitiesLabel: z.string().max(40).default('ACTIVITIES'),
+      deadlineNote: z.string().max(80).default('(DEADLINE FOR POINTS: 9PM SATURDAY)'),
+      pointsHeading: z.string().max(40).default('POINTS (MAX)'),
+      victimsHeading: z.string().max(40).default('VICTIMS'),
+      resultsHeading: z.string().max(60).default('THE AWFUL RESULTS:'),
+    })
+    .default({}),
   /** Display point ranges as "1 to 5" or the compact "1-5" form. */
   pointsRangeFormat: z.enum(['words', 'dash']).default('words'),
   /** Optional target printed in the TOTAL row's possible-points cell. */

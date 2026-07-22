@@ -100,7 +100,8 @@ function composeBracket(
 
 const specColor = (color: string) => color;
 
-function composeRailRules(prims: Primitive[], m: FontMetrics, spec: BoardSpec, box: Box): boolean {
+/** Renders the rail rules and returns the point size actually used (null if they cannot fit). */
+function composeRailRules(prims: Primitive[], m: FontMetrics, spec: BoardSpec, box: Box): number | null {
   let pt = 4.5;
   let planned: Array<{ kind: 'heading'; value: string } | { kind: 'line'; line: StyledRulesLine }> = [];
   let fits = false;
@@ -130,7 +131,7 @@ function composeRailRules(prims: Primitive[], m: FontMetrics, spec: BoardSpec, b
     const h = planned.reduce((sum, item) => sum + m.lineHeightIn(item.kind === 'heading' ? 'landscapeBold' : 'landscape', pt), 0);
     if (h <= box.h) { fits = true; break; }
   }
-  if (!fits) return false;
+  if (!fits) return null;
   let y = box.y;
   for (const item of planned) {
     const h = m.lineHeightIn(item.kind === 'heading' ? 'landscapeBold' : 'landscape', pt);
@@ -153,10 +154,13 @@ function composeRailRules(prims: Primitive[], m: FontMetrics, spec: BoardSpec, b
     }
     y += h;
   }
-  return true;
+  return pt;
 }
 
-export function composeLandscapeBrackets(spec: BoardSpec, m: FontMetrics): Scene | null {
+export function composeLandscapeBrackets(
+  spec: BoardSpec,
+  m: FontMetrics,
+): { scene: Scene; rulesPt: number } | null {
   const prims: Primitive[] = [{ kind: 'rect', box: { x: 0, y: 0, w: 60, h: 48 }, fill: PAGE_BG }];
   const teal = spec.theme.titleColor;
   const blue = spec.theme.accentColor;
@@ -179,13 +183,15 @@ export function composeLandscapeBrackets(spec: BoardSpec, m: FontMetrics): Scene
   line(prims, 17.25, 6.1, 17.25, 46.1, teal, 0.09);
   spec.brackets.forEach((bracket, i) => composeBracket(prims, { x: left.x, y: left.y + i * 10, w: left.w, h: 9.45 }, bracket, blue));
 
+  const labels = spec.landscapeLabels;
   line(prims, grid.x, grid.y, grid.x + grid.w, grid.y, teal, 0.09);
-  text(prims, { x: grid.x, y: 6.45, w: 5.5, h: 0.75 }, 'THE', 'landscapeBold', 34, blue);
-  text(prims, { x: grid.x, y: 7.25, w: 5.5, h: 0.75 }, 'GAME', 'landscapeBold', 34, blue);
-  text(prims, { x: grid.x, y: 8.9, w: 3.0, h: 0.45 }, 'ACTIVITIES', 'landscapeBold', 10, INK);
-  text(prims, { x: grid.x + 2.9, y: 8.95, w: 3.9, h: 0.35 }, '(DEADLINE FOR POINTS: 9PM SATURDAY)', 'landscapeBold', 4.5, teal);
-  text(prims, { x: grid.x + 7.85, y: grid.y + 0.35, w: 0.55, h: 3.35 }, 'POINTS (MAX)', 'landscapeBold', 8, INK, 'center', -90);
-  text(prims, { x: grid.x + 8.7, y: 6.8, w: 2.0, h: 2.0 }, 'VICTIMS', 'landscapeBold', 16, teal, 'center', -45);
+  labels.gameHeading.split(/\s+/).filter(Boolean).forEach((word, i) => {
+    text(prims, { x: grid.x, y: 6.45 + i * 0.8, w: 5.5, h: 0.75 }, word, 'landscapeBold', 34, blue);
+  });
+  text(prims, { x: grid.x, y: 8.9, w: 3.0, h: 0.45 }, labels.activitiesLabel, 'landscapeBold', 10, INK);
+  text(prims, { x: grid.x + 2.9, y: 8.95, w: 3.9, h: 0.35 }, labels.deadlineNote, 'landscapeBold', 4.5, teal);
+  text(prims, { x: grid.x + 7.85, y: grid.y + 0.35, w: 0.55, h: 3.35 }, labels.pointsHeading, 'landscapeBold', 8, INK, 'center', -90);
+  text(prims, { x: grid.x + 8.7, y: 6.8, w: 2.0, h: 2.0 }, labels.victimsHeading, 'landscapeBold', 16, teal, 'center', -45);
 
   const taskW = 7.3;
   const pointsW = 1.65;
@@ -216,7 +222,7 @@ export function composeLandscapeBrackets(spec: BoardSpec, m: FontMetrics): Scene
   for (let i = 0; i <= rows; i++) line(prims, grid.x, bodyTop + i * rowH, grid.x + grid.w, bodyTop + i * rowH, GRID_LINE, i === rows - 1 ? 0.035 : 0.018);
 
   line(prims, right.x, right.y, right.x + right.w, right.y, teal, 0.09);
-  text(prims, { x: right.x + 0.45, y: right.y + 0.5, w: right.w - 0.7, h: 0.5 }, 'THE AWFUL RESULTS:', 'landscapeBold', 12, blue);
+  text(prims, { x: right.x + 0.45, y: right.y + 0.5, w: right.w - 0.7, h: 0.5 }, labels.resultsHeading, 'landscapeBold', 12, blue);
   spec.cornerBoxes.forEach((label, i) => {
     const y = right.y + 1.5 + i * 2.8;
     const match = label.match(/^([^()]+?)(?:\s*\((.+)\))?$/);
@@ -231,7 +237,8 @@ export function composeLandscapeBrackets(spec: BoardSpec, m: FontMetrics): Scene
     if (sub) text(prims, { x: right.x + 0.25, y: y + boxH + 0.5, w: right.w - 0.5, h: 0.3 }, `(${sub})`, 'landscapeBold', 7, teal, 'center');
   });
   line(prims, right.x, 22.8, right.x + right.w, 22.8, teal, 0.09);
-  if (!composeRailRules(prims, m, spec, { x: right.x, y: 23.3, w: right.w, h: 22.5 })) return null;
+  const rulesPt = composeRailRules(prims, m, spec, { x: right.x, y: 23.3, w: right.w, h: 22.5 });
+  if (rulesPt === null) return null;
 
-  return { widthIn: 60, heightIn: 48, primitives: prims };
+  return { scene: { widthIn: 60, heightIn: 48, primitives: prims }, rulesPt };
 }

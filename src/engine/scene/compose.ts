@@ -470,8 +470,7 @@ function composeExtras(spec: BoardSpec, grid: Box, L: GridLayout, m: FontMetrics
   }
 }
 
-type RuleBodyItem = { kind: 'line'; line: StyledRulesLine } | { kind: 'gap' };
-type RuleBlock = { headingLines: string[]; body: RuleBodyItem[]; h: number; ellipsized: boolean };
+type RuleBlock = { headingLines: string[]; body: StyledRulesLine[]; h: number; ellipsized: boolean };
 export type RulesPlan = {
   pt: number;
   lineH: number;
@@ -488,8 +487,6 @@ export type RulesPlan = {
  * Measure every rules word before composition. Returning null makes the build
  * honestly infeasible instead of silently truncating or dropping later rules.
  */
-const RULE_PARAGRAPH_GAP = 0.04;
-
 export function planRules(spec: BoardSpec, box: Box, m: FontMetrics): RulesPlan | null {
   const PAD = 0.2;
   const titleH = spec.rulesTitle ? 0.28 : 0;
@@ -519,7 +516,7 @@ export function planRules(spec: BoardSpec, box: Box, m: FontMetrics): RulesPlan 
       const heading = headingText
         ? wrapToWidth(headingText, colW, 'bodyBold', pt, m, 10_000)
         : { lines: [], ellipsized: false };
-      const body: RuleBodyItem[] = [];
+      const body: StyledRulesLine[] = [];
       let bodyEllipsized = false;
       for (const sourceLine of bodyLines(r)) {
         const wrapped = wrapStyledRuleLine(sourceLine, colW, 'body', 'bodyBold', pt, m);
@@ -527,16 +524,12 @@ export function planRules(spec: BoardSpec, box: Box, m: FontMetrics): RulesPlan 
           bodyEllipsized = true;
           continue;
         }
-        body.push(...wrapped.map((line): RuleBodyItem => ({ kind: 'line', line })));
+        body.push(...wrapped);
       }
-      if (body.at(-1)?.kind === 'gap') body.pop();
       return {
         headingLines: heading.lines,
         body,
-        h:
-          heading.lines.length * headH
-          + body.reduce((sum, item) => sum + (item.kind === 'gap' ? RULE_PARAGRAPH_GAP : lineH), 0)
-          + 0.08,
+        h: heading.lines.length * headH + body.length * lineH + 0.08,
         ellipsized: heading.ellipsized || bodyEllipsized,
       };
     });
@@ -597,26 +590,22 @@ function composeRules(
         prims.push({ kind: 'text', box: { x, y: cy, w: plan.colW, h: plan.headH }, text: headingLine, fontId: 'bodyBold', sizePt: plan.pt, color: accent, align: 'left' });
         cy += plan.headH;
       }
-      for (const item of block.body) {
-        if (item.kind === 'gap') {
-          cy += RULE_PARAGRAPH_GAP;
-        } else {
-          if (item.line.bullet) {
-            prims.push({ kind: 'text', box: { x, y: cy, w: item.line.indentIn, h: plan.lineH }, text: '•', fontId: 'body', sizePt: plan.pt, color: INK, align: 'left' });
-          }
-          for (const segment of item.line.segments) {
-            prims.push({
-              kind: 'text',
-              box: { x: x + segment.x, y: cy, w: segment.w + 0.001, h: plan.lineH },
-              text: segment.text,
-              fontId: segment.bold ? 'bodyBold' : 'body',
-              sizePt: plan.pt,
-              color: INK,
-              align: 'left',
-            });
-          }
-          cy += plan.lineH;
+      for (const line of block.body) {
+        if (line.bullet) {
+          prims.push({ kind: 'text', box: { x, y: cy, w: line.indentIn, h: plan.lineH }, text: '•', fontId: 'body', sizePt: plan.pt, color: INK, align: 'left' });
         }
+        for (const segment of line.segments) {
+          prims.push({
+            kind: 'text',
+            box: { x: x + segment.x, y: cy, w: segment.w + 0.001, h: plan.lineH },
+            text: segment.text,
+            fontId: segment.bold ? 'bodyBold' : 'body',
+            sizePt: plan.pt,
+            color: INK,
+            align: 'left',
+          });
+        }
+        cy += plan.lineH;
       }
   }
 

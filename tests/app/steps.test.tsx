@@ -42,14 +42,22 @@ describe('SetupStep', () => {
     expect(useWizardStore.getState().draft.title).toBe('The Bachelor Weekend of Jesse Cordell Maddox III');
   });
 
-  it('keeps board naming to title and subtitle with the approved placeholders', () => {
-    useWizardStore.getState().patch({ title: '', subtitle: '' });
+  it('keeps board naming to title and subtitle with occasion-appropriate placeholders', () => {
+    useWizardStore.getState().patch({ title: '', subtitle: '', libraryOccasion: 'kids-weekend' });
     const { container } = render(<SetupStep />);
-    expect(screen.getByLabelText(/^title$/i)).toHaveAttribute('placeholder', 'The Bachelor Weekend of Jesse Cordell Maddox III');
-    expect(screen.getByLabelText(/^subtitle$/i)).toHaveAttribute('placeholder', 'October 19th - 22nd, 2022 - Blue Ridge, GA');
+    // Placeholders are obviously-example and match the occasion, not a specific person.
+    expect(screen.getByLabelText(/^title$/i)).toHaveAttribute('placeholder', 'Cousins Camp Weekend');
+    expect(screen.getByLabelText(/^subtitle$/i)).toHaveAttribute('placeholder', 'June 12–14 · Lake Cabin');
     expect(screen.queryByLabelText(/honoree/i)).toBeNull();
     expect(screen.queryByLabelText(/poster size/i)).toBeNull();
     expect(container.querySelector('.section-number')).toBeNull();
+  });
+
+  it('swaps the title placeholder to fit the chosen occasion', async () => {
+    useWizardStore.getState().patch({ title: '' });
+    render(<SetupStep />);
+    await userEvent.click(screen.getByRole('radio', { name: /Bachelor Weekend/ }));
+    expect(screen.getByLabelText(/^title$/i)).toHaveAttribute('placeholder', 'The Lake House Bachelor Weekend');
   });
 
   it('confirms before a preset replaces any customized board setting', async () => {
@@ -217,13 +225,48 @@ describe('ActivitiesStep', () => {
     expect(selected.some((row) => row.catalogId === 'team-trick-shot')).toBe(true);
   });
 
-  it('clears all selected activities from the picker', async () => {
+  it('clears all selected activities from the picker after confirming', async () => {
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
     useWizardStore.getState().patch({ activities: [
       { uid: crypto.randomUUID(), name: 'First activity', points: 1, bonus: false },
       { uid: crypto.randomUUID(), name: 'Second activity', points: 2, bonus: false },
     ] });
     render(<ActivitiesStep />);
     await userEvent.click(screen.getByRole('button', { name: /clear all/i }));
+    expect(confirm).toHaveBeenCalledOnce();
+    expect(useWizardStore.getState().draft.activities).toEqual([]);
+  });
+
+  it('keeps every selection when Clear all is cancelled', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(false);
+    useWizardStore.getState().patch({ activities: [
+      { uid: crypto.randomUUID(), name: 'First activity', points: 1, bonus: false },
+    ] });
+    render(<ActivitiesStep />);
+    await userEvent.click(screen.getByRole('button', { name: /clear all/i }));
+    expect(useWizardStore.getState().draft.activities).toHaveLength(1);
+  });
+
+  it('surfaces a selection hidden by an occasion change so it can be removed', async () => {
+    // house-drink is adult-only, so it disappears from the kids-weekend browse
+    // list — but must stay visible and removable instead of riding along unseen.
+    useWizardStore.getState().patch({
+      libraryOccasion: 'kids-weekend',
+      activities: [{ uid: crypto.randomUUID(), catalogId: 'house-drink', name: 'Create a House Drink', points: 2, bonus: false }],
+    });
+    render(<ActivitiesStep />);
+
+    // A notice near the count flags the hidden selection.
+    expect(screen.getByText(/aren’t shown for this occasion|isn’t shown for this occasion/i)).toBeDefined();
+    // It is not in the normal browse list yet.
+    expect(screen.queryByRole('checkbox', { name: /remove create a house drink/i })).toBeNull();
+
+    await userEvent.click(screen.getByRole('button', { name: /^selected only$/i }));
+    const remove = screen.getByRole('checkbox', { name: /remove create a house drink/i });
+    expect(remove).toBeChecked();
+    expect(screen.getByText(/not shown for this occasion/i)).toBeDefined();
+
+    await userEvent.click(remove);
     expect(useWizardStore.getState().draft.activities).toEqual([]);
   });
 
@@ -318,6 +361,22 @@ describe('DesignStep', () => {
     render(<DesignStep {...props} />);
     await userEvent.selectOptions(screen.getByLabelText(/poster size/i), '36x48');
     expect(useWizardStore.getState().draft.posterSize).toBe('36x48');
+  });
+
+  it('locks the poster size to a fixed note for the landscape-brackets layout', () => {
+    useWizardStore.getState().patch({ template: 'landscapeBrackets' });
+    render(<DesignStep {...props} />);
+    expect(screen.queryByRole('combobox', { name: /poster size/i })).toBeNull();
+    expect(screen.getByText(/60 × 48 in \(fixed for this layout\)/i)).toBeDefined();
+  });
+
+  it('makes Bold a safe no-op with no selection instead of inserting ****', async () => {
+    useWizardStore.getState().patch({ rulesContent: 'Honor system' });
+    render(<DesignStep {...props} />);
+    const bold = screen.getByRole('button', { name: /^bold$/i });
+    expect(bold).toHaveAttribute('aria-disabled', 'true');
+    await userEvent.click(bold);
+    expect(useWizardStore.getState().draft.rulesContent).toBe('Honor system');
   });
 
   it('edits selected activity wording and points in Activity details', async () => {

@@ -5,6 +5,8 @@ import { overflowingRuns, outOfPage } from '../helpers/invariants';
 import type { TextRun, RectPrim, LinePrim } from '../../src/engine/scene/types';
 import { HIGHLIGHT } from '../../src/engine/scene/colors';
 import { buildBoard } from '../../src/engine/buildBoard';
+import { createJesse2017Draft } from '../../src/content/occasions';
+import { toBoardSpec } from '../../src/store/toBoardSpec';
 
 const m = testMetrics();
 
@@ -178,6 +180,69 @@ describe('composeScene: grid', () => {
       brackets: [], cornerBoxes: [], rules: [], rulesContent: `**${'W'.repeat(300)}**`, footnote: '',
     }), m);
     expect(result.ok).toBe(false);
+  });
+});
+
+describe('landscapeBrackets template: labels, size guard, and quality', () => {
+  const landscapeSpec = (over: Record<string, unknown> = {}) => makeSpec({
+    template: 'landscapeBrackets', posterSize: '60x48',
+    players: Array.from({ length: 12 }, (_, i) => `P${i + 1}`),
+    activities: Array.from({ length: 5 }, (_, i) => ({ name: `Task ${i + 1}`, points: i + 1 })),
+    brackets: [], cornerBoxes: [], rules: [], rulesContent: '', footnote: '', totalsTarget: undefined,
+    ...over,
+  });
+
+  it('renders spec-supplied section labels instead of hardcoded 2017 literals', () => {
+    const result = buildBoard(landscapeSpec({
+      landscapeLabels: {
+        gameHeading: 'THE SHOWDOWN',
+        activitiesLabel: 'CHALLENGES',
+        deadlineNote: '(DUE BY MIDNIGHT)',
+        pointsHeading: 'SCORE (MAX)',
+        victimsHeading: 'PLAYERS',
+        resultsHeading: 'THE FINAL RESULTS:',
+      },
+    }), m);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const strings = texts(result.scene).map((t) => t.text);
+    // gameHeading renders one whitespace-delimited word per stacked line
+    expect(strings).toContain('THE');
+    expect(strings).toContain('SHOWDOWN');
+    expect(strings).toContain('CHALLENGES');
+    expect(strings).toContain('(DUE BY MIDNIGHT)');
+    expect(strings).toContain('SCORE (MAX)');
+    expect(strings).toContain('PLAYERS');
+    expect(strings).toContain('THE FINAL RESULTS:');
+    // the original event-specific literals no longer leak from the engine
+    expect(strings).not.toContain('GAME');
+    expect(strings).not.toContain('VICTIMS');
+    expect(strings).not.toContain('THE AWFUL RESULTS:');
+    expect(overflowingRuns(result.scene, m)).toEqual([]);
+    expect(outOfPage(result.scene)).toEqual([]);
+  });
+
+  it('refuses a landscape board on any poster size other than 60x48', () => {
+    for (const posterSize of ['18x24', '24x36', '36x48', '48x72'] as const) {
+      const result = buildBoard(landscapeSpec({ posterSize }), m);
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.reason).toMatch(/60"x48"|60x48/i);
+    }
+  });
+
+  it('reports the real (smaller) rail rules point size, not the old fabricated 7.2pt', () => {
+    const parsed = toBoardSpec(createJesse2017Draft());
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+    const result = buildBoard(parsed.spec, m);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    // The rail squeezes these NDA-length rules to a real size in [3.5, 4.5]pt;
+    // the previous code lied with a constant 7.2pt / 'good'.
+    expect(result.quality.bodyPt).toBeLessThan(7.2);
+    expect(result.quality.bodyPt).toBeLessThanOrEqual(4.5);
+    expect(result.quality.bodyPt).toBeGreaterThanOrEqual(3.5);
+    expect(['good', 'tight', 'poor']).toContain(result.quality.grade);
   });
 });
 

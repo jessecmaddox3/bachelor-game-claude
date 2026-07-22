@@ -1,7 +1,7 @@
 import { boardSpecSchema, type BoardSpec } from '../models/boardSpec';
 import { partitionRegions } from './layout/regions';
 import { solveGrid } from './layout/gridSolver';
-import { gradeLayout, type QualityReport } from './layout/quality';
+import { gradeLandscapeRules, gradeLayout, type QualityReport } from './layout/quality';
 import { composeScene, planRules, type RulesPlan } from './scene/compose';
 import type { FontMetrics } from './fonts/metrics';
 import type { Scene } from './scene/types';
@@ -24,12 +24,20 @@ export function buildBoard(input: unknown, m: FontMetrics): BuildResult {
     ? { ...parsed, activities: parsed.activities.map((a) => ({ ...a, name: a.name.toUpperCase() })) }
     : parsed;
   if (spec.template === 'landscapeBrackets') {
-    const scene = composeLandscapeBrackets(spec, m);
-    if (!scene) return { ok: false, reason: 'Some landscape content cannot fit legibly. Shorten long titles, names, activities, or rules.' };
+    // The landscape layout is dimensioned for a single 60x48 page; any other
+    // size would silently render at the wrong scale, so refuse it honestly.
+    if (spec.posterSize !== '60x48') {
+      return {
+        ok: false,
+        reason: `The Landscape / Brackets template only fits a 60"x48" poster; the selected ${spec.posterSize} size cannot render it. Switch to 60x48.`,
+      };
+    }
+    const composed = composeLandscapeBrackets(spec, m);
+    if (!composed) return { ok: false, reason: 'Some landscape content cannot fit legibly. Shorten long titles, names, activities, or rules.' };
     return {
       ok: true,
-      scene,
-      quality: { grade: 'good', advice: ['Landscape / Brackets template loaded.'], bodyPt: 7.2 },
+      scene: composed.scene,
+      quality: gradeLandscapeRules(composed.rulesPt),
     };
   }
   const regions = partitionRegions(spec);

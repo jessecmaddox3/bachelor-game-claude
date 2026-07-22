@@ -1,6 +1,23 @@
+import { useEffect, useRef, useState } from 'react';
 import type { BoardState } from './useBoard';
+import { PreviewZoom } from './PreviewZoom';
 
 export function Preview({ board }: { board: BoardState }) {
+  const [zoomOpen, setZoomOpen] = useState(false);
+  const zoomButtonRef = useRef<HTMLButtonElement>(null);
+  const ready = board.status === 'ready';
+
+  // Only a rendered scene is zoomable; drop out of the overlay if edits push
+  // the board back into a loading/invalid/infeasible state.
+  useEffect(() => {
+    if (!ready) setZoomOpen(false);
+  }, [ready]);
+
+  const closeZoom = () => {
+    setZoomOpen(false);
+    zoomButtonRef.current?.focus();
+  };
+
   return (
     <div className="preview-pane">
       {board.status === 'ready' && (
@@ -21,9 +38,29 @@ export function Preview({ board }: { board: BoardState }) {
         <div className="problems" data-testid="quality-badge">{board.reason}</div>
       )}
       {board.status === 'ready' ? (
-        // The engine SVG is self-generated markup: renderSvg XML-escapes all user
-        // text content AND color attributes (fill/stroke, verified in Plan 2).
-        <div className="preview" dangerouslySetInnerHTML={{ __html: board.svg }} />
+        <div className="preview">
+          <button
+            ref={zoomButtonRef}
+            type="button"
+            className="preview-zoom-button"
+            aria-haspopup="dialog"
+            aria-label="Enlarge preview to proof at full size"
+            onClick={() => setZoomOpen(true)}
+          >
+            <span aria-hidden="true" className="preview-zoom-icon">⤢</span>
+            Zoom
+          </button>
+          {/* Clicking the poster is a mouse convenience; the corner button above
+              is the accessible, keyboard-reachable affordance (no duplicate AT
+              stop here). The engine SVG is self-generated markup: renderSvg
+              XML-escapes all user text and color attributes (verified in Plan 2). */}
+          <div
+            className="preview-surface"
+            title="Click to enlarge"
+            onClick={() => setZoomOpen(true)}
+            dangerouslySetInnerHTML={{ __html: board.svg }}
+          />
+        </div>
       ) : (
         <div className="preview preview-empty">
           {board.status === 'loading' ? 'Rendering…' : (
@@ -35,6 +72,7 @@ export function Preview({ board }: { board: BoardState }) {
           )}
         </div>
       )}
+      {ready && zoomOpen && <PreviewZoom svg={board.svg} onClose={closeZoom} />}
     </div>
   );
 }

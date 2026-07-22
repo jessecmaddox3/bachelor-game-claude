@@ -74,6 +74,23 @@ describe('boardSpecSchema', () => {
     ).toThrow();
   });
 
+  it('caps the landscape layout at four brackets with a clear message', () => {
+    const bracket = { title: 'BEER PONG', slots: 8 as const };
+    expect(() => makeSpec({ brackets: Array.from({ length: 4 }, () => ({ ...bracket })) })).not.toThrow();
+    expect(() => makeSpec({ brackets: Array.from({ length: 5 }, () => ({ ...bracket })) }))
+      .toThrow(/at most 4 brackets/i);
+  });
+
+  it('defaults landscape section labels to the original board strings', () => {
+    const labels = makeSpec().landscapeLabels;
+    expect(labels.gameHeading).toBe('THE GAME');
+    expect(labels.activitiesLabel).toBe('ACTIVITIES');
+    expect(labels.deadlineNote).toBe('(DEADLINE FOR POINTS: 9PM SATURDAY)');
+    expect(labels.pointsHeading).toBe('POINTS (MAX)');
+    expect(labels.victimsHeading).toBe('VICTIMS');
+    expect(labels.resultsHeading).toBe('THE AWFUL RESULTS:');
+  });
+
   it('accepts maxPoints, write-ins, honoree bonus, corner boxes, structured rules', () => {
     const spec = makeSpec({
       activities: [

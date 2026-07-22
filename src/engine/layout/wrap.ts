@@ -88,6 +88,34 @@ export function fitSizePt(
 }
 
 /**
+ * Split a single unbreakable value at character boundaries into chunks that each
+ * fit maxW. Every completed chunk is handed to onChunk in order; the trailing
+ * partial chunk is returned so the caller can keep accumulating from it. Returns
+ * null when even one character cannot fit maxW (unrenderable at this size).
+ *
+ * Shared by fitWrappedText and rules/richText so grapheme handling lives once.
+ */
+export function splitOverlongWord(
+  value: string,
+  maxW: number,
+  measure: (text: string) => number,
+  onChunk: (chunk: string) => void,
+): string | null {
+  let chunk = '';
+  for (const character of Array.from(value)) {
+    const next = chunk + character;
+    if (chunk && measure(next) > maxW) {
+      onChunk(chunk);
+      chunk = character;
+    } else {
+      chunk = next;
+    }
+    if (measure(chunk) > maxW) return null;
+  }
+  return chunk;
+}
+
+/**
  * Fit a complete text block without ellipsizing. Long unspaced values are
  * split at character boundaries so user-entered labels are never clipped or
  * silently shortened.
@@ -122,18 +150,14 @@ export function fitWrappedText(
         continue;
       }
 
-      let chunk = '';
-      for (const character of Array.from(word)) {
-        const next = chunk + character;
-        if (chunk && m.widthIn(next, fontId, sizePt) > maxW) {
-          lines.push(chunk);
-          chunk = character;
-        } else {
-          chunk = next;
-        }
-        if (m.widthIn(chunk, fontId, sizePt) > maxW) return null;
-      }
-      current = chunk;
+      const finalChunk = splitOverlongWord(
+        word,
+        maxW,
+        (t) => m.widthIn(t, fontId, sizePt),
+        (chunk) => lines.push(chunk),
+      );
+      if (finalChunk === null) return null;
+      current = finalChunk;
     }
     push();
     return lines.length <= options.maxLines ? lines : null;

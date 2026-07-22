@@ -1,5 +1,6 @@
 import type { ParsedRuleLine } from '../../content/rules';
 import type { FontId, FontMetrics } from '../fonts/metrics';
+import { splitOverlongWord } from '../layout/wrap';
 
 export interface StyledRulesSegment {
   text: string;
@@ -70,19 +71,17 @@ export function wrapStyledRuleLine(
     // A single unspaced value can still be represented completely by
     // splitting it at character boundaries. It is never ellipsized.
     flush();
-    let chunk = '';
-    for (const character of Array.from(token.text)) {
-      const next = chunk + character;
-      if (chunk && metrics.widthIn(next, font, pt) > contentW) {
+    const finalChunk = splitOverlongWord(
+      token.text,
+      contentW,
+      (t) => metrics.widthIn(t, font, pt),
+      (chunk) => {
         add(chunk, token.bold, false);
         flush();
-        chunk = character;
-      } else {
-        chunk = next;
-      }
-      if (metrics.widthIn(chunk, font, pt) > contentW) return null;
-    }
-    if (chunk) add(chunk, token.bold, false);
+      },
+    );
+    if (finalChunk === null) return null;
+    if (finalChunk) add(finalChunk, token.bold, false);
   }
   flush();
   return result;
