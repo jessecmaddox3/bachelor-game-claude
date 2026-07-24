@@ -1,19 +1,31 @@
 # Handoff
 
-- Original goal: Rebuild Jesse's 2017 bachelor game board as a shelf-stable poster generator. The separate Challenge Lab lives in `/Users/jesse/claude/challenge-game`.
-- Current phase: Named board save/load and persistent search-engine blocking are complete, verified, pushed, and live at `https://jessemaddox.com/gameboard` as of 2026-07-22. Named-saves commit: `2e7f781`. Noindex source commit: `6c22c96`. Final site deploy commit: `7b54883`.
+- Original goal: Improve the portrait 8.5 × 11 inch printout after the Camp SheiShei field test, write the formal spec, obtain Claude review, implement it, verify it, and preserve other output formats.
+- Current phase: The Letter print-fit release is implemented, independently reviewed, verified, committed, and pushed to source `main` as `bf1f1de`. Production artifact deployment is pending because `/Users/jesse/claude/jessemaddox.com` has an active Codex session and unrelated uncommitted homepage work.
 - Done:
-  - Named snapshots use the stable `game-board-saves-v1` localStorage key, separate from the disposable `game-board-v5` live draft.
-  - Setup now has a named Save flow, overwrite confirmation, saved-board dropdown, and confirm-before-replace Load flow. Occasion presets remain separate.
-  - Saved drafts share the store's normalization path, including default-field backfill, activity UID backfill, and the fixed `60x48` landscape rule. Older schema versions are tolerated.
-  - The source HTML template now carries `noindex, nofollow`, with a regression test so rebuilds cannot silently drop it again.
-  - Full gate passed: 257 tests, `tsc --noEmit`, and production build. Live bundle contains `game-board-saves-v1` and `Save board`; live HTML contains the robots directive.
-  - The prior Letter-size, design, engine, content, and preview work remains live.
-- Pending: Jesse can now build and save the kids board for Jack, Bobbie, Shasha, Hunter, and SG, then export the Letter version. A real-browser visual pass is optional follow-up, not a release blocker.
-- Changed files: named-save store/UI/test files, `docs/superpowers/plans/2026-07-22-named-board-saves.md`, `index.html`, and `tests/app/indexHtml.test.ts`.
-- Verify command: `npm test && npx tsc --noEmit && npm run build`. Site builds must use `npx vite build --base=/projects/gameboard/`. Live verification must fetch the JS path referenced by `/gameboard` and check for `game-board-saves-v1`.
-- Current risks / known issues: Saves are intentionally browser-local and disappear if that browser's site storage is cleared. Cross-device sync is out of scope. Vite's large-chunk warning remains non-blocking.
-- Workspace metadata note: this sandbox could not write this repo's local `.git`. The reviewed workspace files match the remote product state byte-for-byte, but local `git status` still compares them to old HEAD `fea943f`. In a Git-writable terminal, run `git fetch origin && git reset --mixed origin/main` to advance metadata without rewriting the worktree. Do not recommit the apparent duplicate changes.
-- Do not repeat: Do not store named saves in `game-board-v5`. Do not build the site artifact without `/projects/gameboard/` as Vite's base. Do not reunify this product with Challenge Lab.
-- Suggested next step: Jesse creates the kids board, saves it by name, and prints the Letter PDF.
-- Last tool + date: Codex, 2026-07-22.
+  - Added Large Header and Compact Header choices for portrait Letter, with Large as the backward-compatible default.
+  - Added `Include rules on printout`; hidden rules remain saved and editable. Letter rules now reserve only the measured height needed for readable 8-point text.
+  - Combined Letter points and maximum points into one `POINTS (MAX)` column with inline values such as `3 (6)`. Large portrait and landscape scoring remain unchanged.
+  - Added solver-driven approximate Letter capacity in Activities, Design, and Preview, including actionable over-limit guidance.
+  - Enforced Compact Header and corner-box incompatibility in both UI and engine, with linked assistive explanations.
+  - Claude found one confirmed conservative-capacity edge case. A red-green regression test now proves a currently feasible heterogeneous board is never told to remove activities.
+  - Visual proofs of Compact without rules and Large with rules were rasterized from the real scene engine and inspected.
+  - Formal design: `docs/superpowers/specs/2026-07-23-letter-print-fit-design.md`.
+  - Implementation plan: `docs/superpowers/plans/2026-07-23-letter-print-fit.md`.
+  - Final gate: 281 tests passed, `npx tsc --noEmit` passed, `npm run build` passed, and `git diff --check` passed. The known Vite chunk-size warning remains non-blocking.
+- Pending:
+  - Deploy the built artifact to `jessemaddox.com/gameboard` once the active site-repo writer is finished.
+  - Build with `npx vite build --base=/projects/gameboard/`, copy only `dist/` into the site repo's `projects/gameboard/`, stage only that path, commit, push, and verify the live bundle.
+- Changed files: Letter model/defaults, portrait planning, dynamic rules, combined scoring, capacity analyzer, board state/UI, CSS, focused engine/store/app tests, formal spec, and implementation plan. See source commit `bf1f1de`.
+- Verify command (how to confirm it works): `npm test -- --run && npx tsc --noEmit && npm run build && git diff --check`.
+- Current risks / known issues:
+  - Capacity is intentionally approximate for unknown future activity wording. The current render verdict remains authoritative.
+  - The in-app browser was unavailable. Engine-generated Letter PNG proofs were inspected instead.
+  - Do not deploy through the currently dirty site working tree or use Vercel CLI.
+- Do not repeat (dead ends already tried):
+  - Do not use a separate row-count formula. Capacity must continue through `planPortrait` and `solveGrid`.
+  - Do not combine max points on non-Letter portrait boards.
+  - Do not reduce the 0.5-inch Letter margin.
+  - The first Claude review wrapper returned late but completed successfully; no second review is needed unless implementation changes materially.
+- Suggested next step: After the active `jessemaddox.com` session commits or stops, deploy source commit `bf1f1de` using an isolated, path-scoped site commit and verify `Compact Header`, `Include rules on printout`, fit guidance, and `noindex, nofollow` in production.
+- Last tool + date: Codex, 2026-07-23.
