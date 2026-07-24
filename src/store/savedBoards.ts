@@ -1,4 +1,4 @@
-import type { Draft } from './toBoardSpec';
+import { defaultDraft, type Draft } from './toBoardSpec';
 import { normalizeDraft } from './wizardStore';
 
 export const SAVED_BOARDS_KEY = 'game-board-saves-v1';
@@ -26,10 +26,9 @@ function isSavedBoardSnapshot(value: unknown): value is SavedBoardSnapshot {
 }
 
 export function listSavedBoards(): SavedBoardSnapshot[] {
-  const raw = localStorage.getItem(SAVED_BOARDS_KEY);
-  if (!raw) return [];
-
   try {
+    const raw = localStorage.getItem(SAVED_BOARDS_KEY);
+    if (!raw) return [];
     const parsed: unknown = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
     return parsed
@@ -60,4 +59,25 @@ export function saveBoard(name: string, draft: Draft): SavedBoardSnapshot {
 export function loadSavedBoard(name: string): Draft | undefined {
   const snapshot = listSavedBoards().find((saved) => saved.name === name);
   return snapshot ? normalizeDraft(snapshot.draft) : undefined;
+}
+
+function comparableDraft(draft: Draft) {
+  const normalized = normalizeDraft(draft);
+  return {
+    ...normalized,
+    activities: normalized.activities.map(({ uid: _uid, ...activity }) => activity),
+  };
+}
+
+export function draftFingerprint(draft: Draft): string {
+  return JSON.stringify(comparableDraft(draft));
+}
+
+export function savedBoardMatchesDraft(name: string, draft: Draft): boolean {
+  const saved = loadSavedBoard(name);
+  return saved !== undefined && draftFingerprint(saved) === draftFingerprint(draft);
+}
+
+export function workingDraftHasChanges(draft: Draft): boolean {
+  return draftFingerprint(draft) !== draftFingerprint(defaultDraft());
 }

@@ -3,9 +3,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { defaultDraft } from '../../src/store/toBoardSpec';
 import {
   SAVED_BOARDS_KEY,
+  draftFingerprint,
   listSavedBoards,
   loadSavedBoard,
   saveBoard,
+  savedBoardMatchesDraft,
+  workingDraftHasChanges,
 } from '../../src/store/savedBoards';
 
 describe('saved boards', () => {
@@ -90,5 +93,58 @@ describe('saved boards', () => {
     ]));
 
     expect(listSavedBoards().map((snapshot) => snapshot.name)).toEqual(['Usable']);
+  });
+
+  it('ignores editor-only activity uids when comparing a named save', () => {
+    const saved = defaultDraft();
+    saved.activities = [{
+      uid: 'first-uid',
+      catalogId: 'blind-snack-rank',
+      name: 'Rank Three Snacks Blind',
+      points: 2,
+      bonus: false,
+    }];
+    saveBoard('Weekend', saved);
+    const current = structuredClone(saved);
+    current.activities[0]!.uid = 'replacement-uid';
+
+    expect(draftFingerprint(current)).toBe(draftFingerprint(saved));
+    expect(savedBoardMatchesDraft('Weekend', current)).toBe(true);
+
+    current.activities[0]!.points = 7;
+    expect(savedBoardMatchesDraft('Weekend', current)).toBe(false);
+  });
+
+  it('detects changes in an unnamed working draft', () => {
+    expect(workingDraftHasChanges(defaultDraft())).toBe(false);
+    const changed = defaultDraft();
+    changed.subtitle = 'Friday through Sunday';
+    expect(workingDraftHasChanges(changed)).toBe(true);
+  });
+
+  it('does not crash when saved-board storage reads fail', () => {
+    const original = localStorage.getItem;
+    localStorage.getItem = () => {
+      throw new DOMException('Blocked', 'SecurityError');
+    };
+
+    try {
+      expect(listSavedBoards()).toEqual([]);
+    } finally {
+      localStorage.getItem = original;
+    }
+  });
+
+  it('surfaces saved-board storage write failures to the caller', () => {
+    const original = localStorage.setItem;
+    localStorage.setItem = () => {
+      throw new DOMException('Quota exceeded', 'QuotaExceededError');
+    };
+
+    try {
+      expect(() => saveBoard('Weekend', defaultDraft())).toThrow(/quota/i);
+    } finally {
+      localStorage.setItem = original;
+    }
   });
 });

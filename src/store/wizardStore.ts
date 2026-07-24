@@ -32,8 +32,10 @@ export function normalizeDraft(input: Partial<Draft>): Draft {
 interface WizardState {
   draft: Draft;
   step: 0 | 1 | 2;
+  activeSavedBoardName: string | null;
   patch: (p: Partial<Draft>) => void;
-  replaceDraft: (draft: Draft) => void;
+  replaceDraft: (draft: Draft, activeSavedBoardName?: string | null) => void;
+  setActiveSavedBoardName: (name: string | null) => void;
   setStep: (s: 0 | 1 | 2) => void;
   reset: () => void;
 }
@@ -43,10 +45,15 @@ export const useWizardStore = create<WizardState>()(
     (set) => ({
       draft: defaultDraft(),
       step: 0,
+      activeSavedBoardName: null,
       patch: (p) => set((s) => ({ draft: enforceTemplateSize({ ...s.draft, ...p }) })),
-      replaceDraft: (draft) => set({ draft: normalizeDraft(draft) }),
+      replaceDraft: (draft, activeSavedBoardName = null) => set({
+        draft: normalizeDraft(draft),
+        activeSavedBoardName,
+      }),
+      setActiveSavedBoardName: (activeSavedBoardName) => set({ activeSavedBoardName }),
       setStep: (step) => set({ step }),
-      reset: () => set({ draft: defaultDraft(), step: 0 }),
+      reset: () => set({ draft: defaultDraft(), step: 0, activeSavedBoardName: null }),
     }),
     // Versioned key: older saves used different setup and rules shapes.
     {
@@ -55,7 +62,14 @@ export const useWizardStore = create<WizardState>()(
       // identities are restored through the same boundary as named saves.
       merge: (persisted, current) => {
         const p = persisted as Partial<WizardState> | undefined;
-        return { ...current, ...p, draft: normalizeDraft(p?.draft ?? {}) };
+        return {
+          ...current,
+          ...p,
+          draft: normalizeDraft(p?.draft ?? {}),
+          activeSavedBoardName: typeof p?.activeSavedBoardName === 'string'
+            ? p.activeSavedBoardName
+            : null,
+        };
       },
     },
   ),

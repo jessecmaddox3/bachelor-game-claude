@@ -75,6 +75,21 @@ describe('wizardStore', () => {
     expect(useWizardStore.getState().draft.honoree).toBe('Jesse');
   });
 
+  it('tracks the active named save and clears it for replacements and reset', () => {
+    const replacement = structuredClone(useWizardStore.getState().draft);
+    useWizardStore.getState().setActiveSavedBoardName('Weekend board');
+    expect(useWizardStore.getState().activeSavedBoardName).toBe('Weekend board');
+
+    useWizardStore.getState().replaceDraft(replacement);
+    expect(useWizardStore.getState().activeSavedBoardName).toBeNull();
+
+    useWizardStore.getState().replaceDraft(replacement, 'Loaded board');
+    expect(useWizardStore.getState().activeSavedBoardName).toBe('Loaded board');
+
+    useWizardStore.getState().reset();
+    expect(useWizardStore.getState().activeSavedBoardName).toBeNull();
+  });
+
   it('normalizes partial drafts through the shared restoration boundary', () => {
     const normalized = normalizeDraft({
       title: 'Legacy board',
@@ -133,6 +148,16 @@ describe('wizardStore', () => {
     expect(draft.rulesContent).toMatch(/HONOR SYSTEM/);
     expect(draft.letterHeaderStyle).toBe('large');
     expect(draft.includeRules).toBe(true);
+  });
+
+  it('backfills a missing active save name as null', async () => {
+    const legacy = structuredClone(useWizardStore.getState().draft);
+    localStorage.setItem('game-board-v5', JSON.stringify({
+      state: { draft: legacy, step: 1 },
+      version: 0,
+    }));
+    await useWizardStore.persist.rehydrate();
+    expect(useWizardStore.getState().activeSavedBoardName).toBeNull();
   });
 
   it('persists the complete atomically replaced occasion draft', () => {
