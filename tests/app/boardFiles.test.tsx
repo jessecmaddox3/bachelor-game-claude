@@ -23,7 +23,28 @@ afterEach(() => {
 });
 
 describe('named board controls', () => {
-  it('saves an unnamed board from the header and then updates it in one click', async () => {
+  it('places board actions in a document toolbar above the workspace', () => {
+    const { container } = render(<App metrics={testMetrics()} buffers={null} />);
+    const header = container.querySelector('.app-header');
+    const layout = container.querySelector('.builder-layout');
+    const toolbar = container.querySelector('.board-document-bar');
+    const panel = container.querySelector('.panel');
+    const preview = container.querySelector('.preview-pane');
+    const save = screen.getByRole('button', { name: /^save board/i });
+    const boards = screen.getByRole('button', { name: /^boards$/i });
+    const startOver = screen.getByRole('button', { name: /^start over$/i });
+
+    expect(toolbar).not.toBeNull();
+    expect(header).not.toContainElement(save);
+    expect(toolbar).toContainElement(save);
+    expect(toolbar).toContainElement(boards);
+    expect(toolbar).toContainElement(startOver);
+    expect(layout?.firstElementChild).toBe(toolbar);
+    expect(toolbar?.nextElementSibling).toBe(panel);
+    expect(panel?.nextElementSibling).toBe(preview);
+  });
+
+  it('saves an unnamed board from the toolbar and then updates it in one click', async () => {
     render(<App metrics={testMetrics()} buffers={null} />);
     await userEvent.click(screen.getByRole('button', { name: /^save (?!as)/i }));
     expect(screen.getByRole('dialog', { name: /saved boards/i })).toBeDefined();

@@ -40,14 +40,22 @@ export function App({ metrics, buffers }: { metrics: FontMetrics; buffers: FontB
             </button>
           ))}
         </nav>
-        <div className="header-actions">
-          <BoardFileControls />
-          <button className="ghost header-action" onClick={() => window.confirm('Start over? This clears the current board.') && reset()}>
-            Start over
-          </button>
-        </div>
       </header>
       <main className="builder-layout">
+        <section className="board-document-bar" aria-label="Board controls">
+          <div className="board-document-heading">
+            <span className="eyebrow">Board</span>
+            <strong>Save your progress</strong>
+          </div>
+          <BoardFileControls />
+          <button
+            className="ghost board-reset-button"
+            type="button"
+            onClick={() => window.confirm('Start over? This clears the current board.') && reset()}
+          >
+            Start over
+          </button>
+        </section>
         <section className="panel">
           {step === 0 && <SetupStep />}
           {step === 1 && <ActivitiesStep fit={fit} />}
