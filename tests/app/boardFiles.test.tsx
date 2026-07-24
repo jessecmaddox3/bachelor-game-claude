@@ -39,6 +39,7 @@ describe('named board controls', () => {
     expect(toolbar).toContainElement(save);
     expect(toolbar).toContainElement(boards);
     expect(toolbar).toContainElement(startOver);
+    expect(startOver.closest('.board-reset-group')).not.toBeNull();
     expect(layout?.firstElementChild).toBe(toolbar);
     expect(toolbar?.nextElementSibling).toBe(panel);
     expect(panel?.nextElementSibling).toBe(preview);
@@ -47,7 +48,7 @@ describe('named board controls', () => {
   it('saves an unnamed board from the toolbar and then updates it in one click', async () => {
     render(<App metrics={testMetrics()} buffers={null} />);
     await userEvent.click(screen.getByRole('button', { name: /^save (?!as)/i }));
-    expect(screen.getByRole('dialog', { name: /saved boards/i })).toBeDefined();
+    expect(screen.getByRole('dialog', { name: /^boards$/i })).toBeDefined();
 
     const name = screen.getByLabelText(/save name/i);
     await userEvent.clear(name);
@@ -84,7 +85,7 @@ describe('named board controls', () => {
 
     await userEvent.click(screen.getByRole('button', { name: /^boards$/i }));
     await userEvent.click(screen.getByRole('button', {
-      name: /open jesse maddox bachelor 2017/i,
+      name: /open built-in board jesse maddox bachelor 2017/i,
     }));
 
     const state = useWizardStore.getState();
@@ -104,14 +105,48 @@ describe('named board controls', () => {
 
     await userEvent.click(screen.getByRole('button', { name: /^boards$/i }));
     await userEvent.click(screen.getByRole('button', {
-      name: /open jesse maddox bachelor 2017/i,
+      name: /open built-in board jesse maddox bachelor 2017/i,
     }));
 
     expect(confirm).toHaveBeenCalledWith(
       'Open this built-in board? Unsaved changes will be replaced.',
     );
     expect(useWizardStore.getState().draft.subtitle).toBe('Keep this work');
-    expect(screen.getByRole('dialog', { name: /saved boards/i })).toBeDefined();
+    expect(screen.getByRole('dialog', { name: /^boards$/i })).toBeDefined();
+  });
+
+  it('focuses the current browser save while keeping built-in boards visually first', async () => {
+    saveBoard('Beach 2026', defaultDraft());
+    useWizardStore.getState().replaceDraft(defaultDraft(), 'Beach 2026');
+    render(<App metrics={testMetrics()} buffers={null} />);
+
+    await userEvent.click(screen.getByRole('button', { name: /^boards$/i }));
+    const builtIn = screen.getByRole('button', {
+      name: /open built-in board jesse maddox bachelor 2017/i,
+    });
+    const saved = screen.getByRole('button', { name: /open beach 2026/i });
+
+    expect(builtIn.compareDocumentPosition(saved) & Node.DOCUMENT_POSITION_FOLLOWING)
+      .toBeTruthy();
+    expect(document.activeElement).toBe(saved);
+  });
+
+  it('opens Save as after loading a built-in without creating a named save', async () => {
+    render(<App metrics={testMetrics()} buffers={null} />);
+
+    await userEvent.click(screen.getByRole('button', { name: /^boards$/i }));
+    await userEvent.click(screen.getByRole('button', {
+      name: /open built-in board jesse maddox bachelor 2017/i,
+    }));
+
+    expect(useWizardStore.getState().activeSavedBoardName).toBeNull();
+    expect(localStorage.getItem(SAVED_BOARDS_KEY)).toBeNull();
+
+    await userEvent.click(screen.getByRole('button', { name: /^save board/i }));
+
+    expect(screen.getByRole('dialog', { name: /^boards$/i })).toBeDefined();
+    expect(screen.getByRole('button', { name: /^save as$/i })).toBeDefined();
+    expect(localStorage.getItem(SAVED_BOARDS_KEY)).toBeNull();
   });
 
   it('requires confirmation before replacing unsaved changes', async () => {
@@ -197,14 +232,14 @@ describe('named board controls', () => {
 
     expect(confirm).toHaveBeenCalledWith('Overwrite this saved board?');
     expect(loadSavedBoard('Race board')?.title).toBe('External version');
-    expect(screen.getByRole('dialog', { name: /saved boards/i })).toBeDefined();
+    expect(screen.getByRole('dialog', { name: /^boards$/i })).toBeDefined();
   });
 
   it('closes from the modal backdrop and restores focus to Boards', async () => {
     render(<App metrics={testMetrics()} buffers={null} />);
     const boards = screen.getByRole('button', { name: /^boards$/i });
     await userEvent.click(boards);
-    const dialog = screen.getByRole('dialog', { name: /saved boards/i });
+    const dialog = screen.getByRole('dialog', { name: /^boards$/i });
     vi.spyOn(dialog, 'getBoundingClientRect').mockReturnValue({
       left: 100,
       right: 500,

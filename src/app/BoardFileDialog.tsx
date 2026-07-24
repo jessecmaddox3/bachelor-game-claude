@@ -59,7 +59,9 @@ export function BoardFileDialog({
 
     const initialControl = initialFocus === 'save'
       ? saveNameInput.current
-      : element.querySelector<HTMLButtonElement>('[data-board-open]') ?? closeButton.current;
+      : element.querySelector<HTMLButtonElement>('.browser-board-list [data-board-open]')
+        ?? element.querySelector<HTMLButtonElement>('[data-board-open]')
+        ?? closeButton.current;
     initialControl?.focus();
 
     return () => {
@@ -77,7 +79,7 @@ export function BoardFileDialog({
       ref={dialog}
       className="board-file-dialog"
       aria-modal="true"
-      aria-labelledby="saved-boards-heading"
+      aria-labelledby="boards-heading"
       onClick={(event) => {
         if (event.target !== event.currentTarget) return;
         const bounds = event.currentTarget.getBoundingClientRect();
@@ -95,7 +97,7 @@ export function BoardFileDialog({
         <div className="board-file-dialog-heading">
           <div>
             <span className="eyebrow">Board library</span>
-            <h2 id="saved-boards-heading">Saved boards</h2>
+            <h2 id="boards-heading">Boards</h2>
           </div>
           <button ref={closeButton} className="ghost" type="button" onClick={onClose}>
             Close
@@ -118,7 +120,7 @@ export function BoardFileDialog({
                   className="secondary"
                   type="button"
                   data-board-open
-                  aria-label={`Open ${board.name}`}
+                  aria-label={`Open built-in board ${board.name}`}
                   onClick={() => onOpenBuiltIn(board.id)}
                 >
                   Open

@@ -48,13 +48,15 @@ export function App({ metrics, buffers }: { metrics: FontMetrics; buffers: FontB
             <strong>Save your progress</strong>
           </div>
           <BoardFileControls />
-          <button
-            className="ghost board-reset-button"
-            type="button"
-            onClick={() => window.confirm('Start over? This clears the current board.') && reset()}
-          >
-            Start over
-          </button>
+          <div className="board-reset-group">
+            <button
+              className="ghost board-reset-button"
+              type="button"
+              onClick={() => window.confirm('Start over? This clears the current board.') && reset()}
+            >
+              Start over
+            </button>
+          </div>
         </section>
         <section className="panel">
           {step === 0 && <SetupStep />}
