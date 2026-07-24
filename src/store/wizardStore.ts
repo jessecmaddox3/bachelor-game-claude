@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { defaultDraft, type Draft } from './toBoardSpec';
+import { canonicalActivityId } from '../content/activityAliases';
 
 // The landscape-brackets template renders a fixed 60×48 scene, so keep the
 // poster size locked to match — otherwise an export can be named for one size
@@ -16,10 +17,14 @@ function enforceTemplateSize(draft: Draft): Draft {
 export function normalizeDraft(input: Partial<Draft>): Draft {
   const draft = { ...defaultDraft(), ...input };
   draft.activities = Array.isArray(draft.activities)
-    ? draft.activities.map((activity) => ({
-      ...activity,
-      uid: activity.uid ?? crypto.randomUUID(),
-    }))
+    ? draft.activities.map((activity) => {
+      const catalogId = canonicalActivityId(activity.catalogId);
+      return {
+        ...activity,
+        ...(catalogId === undefined ? {} : { catalogId }),
+        uid: activity.uid ?? crypto.randomUUID(),
+      };
+    })
     : [];
   return enforceTemplateSize(draft);
 }

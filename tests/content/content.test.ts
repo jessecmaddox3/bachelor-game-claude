@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { createHash } from 'node:crypto';
 import { ACTIVITY_LIBRARY, ACTIVITY_CATEGORIES, ACTIVITY_OCCASIONS, RECOMMENDED_ACTIVITY_IDS, STARTER_RULES, STARTER_RULES_CONTENT, STARTER_FOOTNOTE } from '../../src/content/activities';
+import { ACTIVITY_ID_ALIASES, canonicalActivityId } from '../../src/content/activityAliases';
 import {
   ACTIVITY_CATEGORY_ORDER,
   activityRelevance,
@@ -22,6 +23,13 @@ import { buildBoard } from '../../src/engine/buildBoard';
 import { testMetrics } from '../helpers/loadFonts';
 import { overflowingRuns, outOfPage } from '../helpers/invariants';
 
+const normalizedActivityTitle = (value: string) => value
+  .toLowerCase()
+  .replace(/\b(a|an|the|one)\b/g, ' ')
+  .replace(/[^a-z0-9]+/g, ' ')
+  .trim()
+  .replace(/\s+/g, ' ');
+
 describe('activity library', () => {
   it('has at least 40 activities, all schema-valid', () => {
     expect(ACTIVITY_LIBRARY.length).toBeGreaterThanOrEqual(40);
@@ -40,7 +48,7 @@ describe('activity library', () => {
   it('has stable unique ids and useful occasion coverage', () => {
     expect(new Set(ACTIVITY_LIBRARY.map((a) => a.id)).size).toBe(ACTIVITY_LIBRARY.length);
     expect(ACTIVITY_OCCASIONS).toContain('beach-trip');
-    expect(ACTIVITY_LIBRARY.filter((a) => /^(bch|bte|kid|fam|sea|ann|fri|gen)-/.test(a.id)).length).toBeGreaterThanOrEqual(190);
+    expect(ACTIVITY_LIBRARY.filter((a) => /^(bch|bte|kid|fam|sea|ann|fri|gen)-/.test(a.id)).length).toBeGreaterThanOrEqual(170);
     for (const occasion of ACTIVITY_OCCASIONS) {
       expect(ACTIVITY_LIBRARY.filter((a) => a.occasions.includes(occasion)).length).toBeGreaterThanOrEqual(24);
       expect(RECOMMENDED_ACTIVITY_IDS[occasion].length).toBeGreaterThanOrEqual(12);
@@ -102,7 +110,7 @@ describe('activity library', () => {
     expect(ACTIVITY_LIBRARY.find((item) => item.id === 'bch-hot-wing-run')?.instruction).toMatch(/water/i);
     expect(ACTIVITY_LIBRARY.find((item) => item.id === 'sea-tan-line')?.instruction).not.toMatch(/sunburn/i);
     expect(ACTIVITY_LIBRARY.find((item) => item.id === 'bte-stranger-compliment')?.instruction).not.toMatch(/report their reaction/i);
-    expect(ACTIVITY_LIBRARY.find((item) => item.id === 'bte-dance-with-stranger')?.instruction).toMatch(/invite/i);
+    expect(ACTIVITY_LIBRARY.find((item) => item.id === 'invite-one-dance')?.instruction).toMatch(/invite/i);
     expect(ACTIVITY_LIBRARY.find((item) => item.id === 'sea-stranger-photo')?.instruction).toMatch(/^Ask/i);
     expect(ACTIVITY_LIBRARY.find((item) => item.id === 'gen-cheers-strangers')?.instruction).toMatch(/invite/i);
     for (const removedId of [
@@ -111,6 +119,40 @@ describe('activity library', () => {
     ]) {
       expect(ACTIVITY_LIBRARY.some((item) => item.id === removedId)).toBe(false);
     }
+  });
+
+  it('exposes one unambiguous public title for every safe occasion catalog', () => {
+    for (const occasion of ACTIVITY_OCCASIONS) {
+      const visible = groupActivitiesForOccasion(ACTIVITY_LIBRARY, occasion)
+        .flatMap((group) => group.activities);
+      const seen = new Map<string, string>();
+      for (const activity of visible) {
+        const title = normalizedActivityTitle(activity.name);
+        expect(
+          seen.get(title),
+          `${occasion} repeats "${activity.name}" as ${seen.get(title)} and ${activity.id}`,
+        ).toBeUndefined();
+        seen.set(title, activity.id);
+      }
+    }
+  });
+
+  it('maps every legacy catalog id to a public canonical activity', () => {
+    const publicIds = new Set(ACTIVITY_LIBRARY.map((activity) => activity.id));
+    for (const [legacyId, canonicalId] of Object.entries(ACTIVITY_ID_ALIASES)) {
+      expect(publicIds.has(legacyId), `${legacyId} must not remain public`).toBe(false);
+      expect(publicIds.has(canonicalId), `${canonicalId} must remain public`).toBe(true);
+      expect(canonicalActivityId(legacyId)).toBe(canonicalId);
+    }
+    expect(canonicalActivityId('custom-catalog-id')).toBe('custom-catalog-id');
+    expect(canonicalActivityId(undefined)).toBeUndefined();
+  });
+
+  it('keeps the intentionally distinct dessert variants clearly named', () => {
+    expect(ACTIVITY_LIBRARY.find((item) => item.id === 'bte-dessert-share')?.name)
+      .toBe("Bride's Dessert Toast");
+    expect(ACTIVITY_LIBRARY.find((item) => item.id === 'ann-dessert-share')?.name)
+      .toBe('One-Spoon Dessert');
   });
 
   it('mixes safe reusable ideas into every recommended set', () => {

@@ -91,6 +91,29 @@ describe('wizardStore', () => {
     expect(normalized.posterSize).toBe('60x48');
   });
 
+  it('migrates legacy catalog ids without changing customized row values', () => {
+    const normalized = normalizeDraft({
+      ...useWizardStore.getState().draft,
+      activities: [{
+        uid: 'stable-row',
+        catalogId: 'fam-taste-test',
+        name: 'Our custom taste challenge',
+        points: 9,
+        maxPoints: 18,
+        bonus: true,
+      }],
+    });
+
+    expect(normalized.activities[0]).toEqual({
+      uid: 'stable-row',
+      catalogId: 'blind-snack-rank',
+      name: 'Our custom taste challenge',
+      points: 9,
+      maxPoints: 18,
+      bonus: true,
+    });
+  });
+
   it('persists via the storage key with a schema version', () => {
     expect(useWizardStore.persist.getOptions().name).toBe('game-board-v5');
   });

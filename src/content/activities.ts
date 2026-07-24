@@ -58,7 +58,16 @@ const a = (
 const CONSOLIDATED_SEED_IDS = new Set([
   'bch-cornhole-champ', 'bte-cornhole-win', 'fri-cornhole-champ', 'gen-cornhole-score',
   'bch-sunrise-photo', 'fri-sunrise-watch',
-  'fri-blind-taste', 'gen-taste-mystery',
+  'fam-taste-test', 'ann-blind-taste', 'fri-blind-taste', 'gen-taste-mystery',
+  'fam-photo-recreate', 'ann-photo-recreate',
+  'fri-first-coffee', 'fam-timeline-build', 'kid-thank-you-note',
+  'fam-help-cleanup', 'fri-plate-wash', 'gen-help-clean', 'fri-cabin-fix',
+  'fam-toast-honor', 'gen-toast', 'fri-toast-story',
+  'kid-set-table', 'fam-help-setup',
+  'bte-card-game-win', 'kid-card-game',
+  'bch-dance-floor-stranger', 'bte-dance-with-stranger',
+  'kid-talent-show', 'fri-talent-share', 'gen-mini-talent',
+  'fam-interview-elder',
   'bch-cold-plunge', 'fri-cold-plunge', 'sea-cold-plunge',
   'bch-arm-wrestle', 'fri-arm-wrestle', 'gen-arm-wrestle',
   'bch-karaoke-solo', 'bte-karaoke-verse', 'fri-karaoke-song',
@@ -72,6 +81,8 @@ export const ACTIVITY_LIBRARY: PresetActivity[] = [
   a('true-story', 'Tell a True 60-Second Story', 'Tell a true one-minute story about someone in the group.', 1, 'social', GROUPS),
   a('three-voice-read', 'Read a Book in Three Voices', 'Read a short book or scene aloud using at least three distinct character voices.', 2, 'social', FAMILY),
   a('karaoke-song', 'Perform One Full Karaoke Song', 'Perform one complete song, solo or with a willing partner.', 2, 'social', ADULT, 'stretch'),
+  a('invite-one-dance', 'Invite Someone for One Dance', 'Invite someone outside your group to join one dance, with no pressure if they decline.', 3, 'social', ADULT, 'stretch'),
+  a('talent-share', 'Share a Talent', 'Perform one short song, dance, trick, impression, or other talent for the group.', 2, 'social', ALL, 'stretch'),
   a('secret-skill', 'Teach Your Secret Skill', 'Teach a small skill that most people in the group did not know you had.', 2, 'social'),
   a('story-circle', 'Start a Six-Person Story Circle', 'Gather six people and prompt each person to tell a true two-minute story.', 3, 'social', GROUPS, 'stretch'),
   a('compliment-evidence', 'Compliment With Evidence', 'Tell someone one thing you value about them and include a specific example.', 1, 'social'),
@@ -80,7 +91,7 @@ export const ACTIVITY_LIBRARY: PresetActivity[] = [
   a('invent-handshake', 'Invent a Group Handshake', 'Create a repeatable handshake with at least three moves and teach it to two people.', 1, 'social', ALL),
 
   // Games and competition
-  a('board-game-win', 'Win a Board Game', 'Win one complete board game played during the event.', 2, 'games', ALL),
+  a('board-game-win', 'Win a Card, Dice, or Board Game', 'Win one complete round of an agreed card, dice, or board game.', 2, 'games', ALL),
   a('chess-win', 'Win a Game of Chess', 'Win one complete game of chess.', 2, 'games', ALL),
   a('rps-best-five', 'Win Rock Paper Scissors, Best of Five', 'Beat another player in a best-of-five match.', 1, 'games', ALL, 'easy', { maxPoints: 3 }),
   a('charades-round', 'Win a Charades Round', 'Get your team to guess the prompt before time expires.', 1, 'games', ALL, 'easy', { maxPoints: 3 }),
@@ -135,6 +146,7 @@ export const ACTIVITY_LIBRARY: PresetActivity[] = [
   // Helpful acts
   a('first-up-coffee', 'First One Up Makes Coffee or Tea', 'The first person awake prepares coffee, tea, or breakfast setup for the group.', 2, 'service', GROUPS),
   a('meal-cleanup', 'Complete a Full Meal Cleanup', 'Clear, wash, dry, and reset the meal area without being assigned.', 2, 'service', ALL),
+  a('set-table', 'Set the Table', 'Set or reset the table for a group meal with the needed dishes, napkins, and utensils.', 2, 'service', FAMILY),
   a('water-round', 'Run a Water and Snack Round', 'Offer water and a snack option to everyone in the group.', 1, 'service', GROUPS, 'easy', { maxPoints: 2 }),
   a('cabin-improvement', 'Improve One Shared Space', 'Notice and complete one useful shared-space task before anyone assigns it.', 2, 'service', GROUPS),
   a('thank-you-note', 'Write a Specific Thank-You Note', 'Write a short note naming one thing a person did and why it mattered.', 2, 'service', ALL),
@@ -216,13 +228,13 @@ export const ACTIVITY_LIBRARY: PresetActivity[] = [
 
 export const RECOMMENDED_ACTIVITY_IDS: Record<ActivityOccasion, readonly string[]> = {
   bachelor: ['bch-groom-toast', 'bch-stranger-cheers', 'bch-best-man-story', 'bch-poker-buyin', 'cornhole-win', 'bch-golf-hole', 'bch-hike-summit', 'bch-groom-caricature', 'bch-local-delicacy', 'bch-groom-bag-carry', 'bch-dance-floor', 'bch-toast-shot', 'bch-cannonball', 'group-photo-pose', 'honoree-superlative', 'team-trick-shot'],
-  bachelorette: ['bte-bride-story', 'bte-stranger-compliment', 'karaoke-song', 'bte-trivia-bride', 'bte-card-game-win', 'bte-scavenger-item', 'bte-mini-golf-birdie', 'cornhole-win', 'bte-sunrise-walk', 'bte-friendship-bracelet', 'bte-advice-card', 'bte-signature-cocktail', 'bte-carry-bags', 'bte-dance-floor-fill', 'bte-toast-champagne', 'group-photo-pose'],
-  'kids-weekend': ['kid-read-aloud', 'kid-tell-joke', 'kid-talent-show', 'kid-puppet-show', 'kid-obstacle-course', 'kid-scavenger-hunt', 'kid-card-game', 'kid-cartwheel', 'kid-nature-walk', 'kid-bug-hunt', 'kid-build-fort', 'kid-draw-picture', 'kid-help-snack', 'kid-set-table', 'kid-teaches-game', 'photo-caption-contest'],
-  anniversary: ['ann-first-date', 'ann-love-letter', 'ann-shared-memory', 'ann-cook-together', 'ann-plan-surprise', 'ann-slow-dance', 'ann-couples-trivia', 'ann-photo-recreate', 'ann-compliment-battle', 'blind-snack-rank', 'ann-back-massage', 'ann-slow-walk', 'ann-vow-rewrite', 'ann-star-gaze', 'object-with-story', 'honoree-superlative'],
-  'family-reunion': ['fam-relative-story', 'fam-interview-elder', 'fam-family-tree', 'fam-photo-recreate', 'fam-teach-recipe', 'fam-name-origin', 'fam-nickname-swap', 'fam-cross-gen-team', 'fam-tug-of-war', 'fam-scavenger-item', 'fam-talent-show', 'fam-help-cleanup', 'fam-group-photo', 'fam-family-trivia', 'kid-teaches-game', 'family-lookalike'],
-  'friends-weekend': ['fri-group-cook', 'fri-first-coffee', 'fri-cabin-fix', 'fri-game-night-win', 'fri-group-hike', 'fri-talent-share', 'fri-toast-story', 'cornhole-win', 'fri-plate-wash', 'sunrise-view', 'fri-craft-something', 'blind-snack-rank', 'cold-water-plunge', 'karaoke-song', 'fri-morning-workout', 'fri-photo-scavenger'],
+  bachelorette: ['bte-bride-story', 'bte-stranger-compliment', 'karaoke-song', 'bte-trivia-bride', 'board-game-win', 'bte-scavenger-item', 'bte-mini-golf-birdie', 'cornhole-win', 'bte-sunrise-walk', 'bte-friendship-bracelet', 'bte-advice-card', 'bte-signature-cocktail', 'bte-carry-bags', 'bte-dance-floor-fill', 'bte-toast-champagne', 'group-photo-pose'],
+  'kids-weekend': ['kid-read-aloud', 'kid-tell-joke', 'talent-share', 'kid-puppet-show', 'kid-obstacle-course', 'kid-scavenger-hunt', 'board-game-win', 'kid-cartwheel', 'kid-nature-walk', 'kid-bug-hunt', 'kid-build-fort', 'kid-draw-picture', 'kid-help-snack', 'set-table', 'kid-teaches-game', 'photo-caption-contest'],
+  anniversary: ['ann-first-date', 'ann-love-letter', 'ann-shared-memory', 'ann-cook-together', 'ann-plan-surprise', 'ann-slow-dance', 'ann-couples-trivia', 'recreate-photo', 'ann-compliment-battle', 'blind-snack-rank', 'ann-back-massage', 'ann-slow-walk', 'ann-vow-rewrite', 'ann-star-gaze', 'object-with-story', 'honoree-superlative'],
+  'family-reunion': ['fam-relative-story', 'family-interview', 'fam-family-tree', 'recreate-photo', 'fam-teach-recipe', 'fam-name-origin', 'fam-nickname-swap', 'fam-cross-gen-team', 'fam-tug-of-war', 'fam-scavenger-item', 'fam-talent-show', 'meal-cleanup', 'fam-group-photo', 'fam-family-trivia', 'kid-teaches-game', 'family-lookalike'],
+  'friends-weekend': ['fri-group-cook', 'first-up-coffee', 'cabin-improvement', 'fri-game-night-win', 'fri-group-hike', 'talent-share', 'specific-toast', 'cornhole-win', 'meal-cleanup', 'sunrise-view', 'fri-craft-something', 'blind-snack-rank', 'cold-water-plunge', 'karaoke-song', 'fri-morning-workout', 'fri-photo-scavenger'],
   'beach-trip': ['sea-sandcastle', 'sea-sunrise', 'sea-jump-waves', 'sea-shell-collect', 'sea-cleanup', 'sea-seafood-try', 'sea-sunset-photo', 'sea-boardwalk-game', 'sea-bodysurf', 'sea-volleyball', 'sea-tide-pool', 'sea-limbo', 'sea-sing-song', 'cold-water-plunge', 'team-trick-shot', 'one-song-dj'],
-  general: ['gen-icebreaker', 'two-truths-one-lie', 'gen-compliment', 'gen-mini-talent', 'gen-rock-paper-scissors', 'gen-staring-contest', 'gen-trivia-win', 'gen-card-trick', 'gen-ball-keepup', 'gen-find-object', 'gen-sunset-selfie', 'gen-quick-sketch', 'gen-freestyle-dance', 'blind-snack-rank', 'gen-help-clean', 'gen-teach-fact'],
+  general: ['gen-icebreaker', 'two-truths-one-lie', 'gen-compliment', 'talent-share', 'gen-rock-paper-scissors', 'gen-staring-contest', 'gen-trivia-win', 'gen-card-trick', 'gen-ball-keepup', 'gen-find-object', 'gen-sunset-selfie', 'gen-quick-sketch', 'gen-freestyle-dance', 'blind-snack-rank', 'cabin-improvement', 'gen-teach-fact'],
 };
 
 export const STARTER_RULES = [
