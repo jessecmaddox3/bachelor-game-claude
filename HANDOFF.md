@@ -1,5 +1,7 @@
 # Handoff
 
+Cold-review details and the exact commit range are in `docs/REVIEW_HANDOFF.md`.
+
 - Original goal: Add Jesse's complete original bachelor-party board as a protected built-in choice named **Jesse Maddox Bachelor 2017**, relocate Save and Boards to a prominent toolbar above the workspace, verify the result independently, and publish it to `https://jessemaddox.com/gameboard`.
 - Current phase: Complete, pushed, deployed, and verified live. Feature source is `a17b84a`; website deployment is `1a18fda`.
 - Done:
