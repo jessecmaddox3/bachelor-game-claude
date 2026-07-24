@@ -186,10 +186,28 @@ The initial canonical migrations are:
 | `fam-toast-honor`, `gen-toast`, `fri-toast-story` | `specific-toast` | Same specific group toast mechanic |
 | `kid-set-table`, `fam-help-setup` | `set-table` | Same table-setting activity |
 | `bte-card-game-win`, `kid-card-game` | `board-game-win` | Same card, dice, or board-game win |
+| `bch-dance-floor-stranger`, `bte-dance-with-stranger` | `invite-one-dance` | Same respectful one-dance invitation |
+| `kid-talent-show`, `fri-talent-share`, `gen-mini-talent` | `talent-share` | Same short talent performance |
+| `fam-interview-elder` | `family-interview` | Same interview with an older relative |
 
 `set-table` is a new reusable canonical entry for kids weekends and family reunions.
 
 `board-game-win` is renamed to `Win a Card, Dice, or Board Game`, with one inclusive instruction and its existing stable ID.
+
+`invite-one-dance` and `talent-share` are new reusable canonical entries for their safe eligible occasions.
+
+The two dessert activities remain separate because sharing a bride's dessert toast and completing the anniversary one-spoon challenge have different success conditions. Their names change to `Bride's Dessert Toast` and `One-Spoon Dessert` so the complete catalog no longer presents them as indistinguishable choices.
+
+The alias map also covers IDs consolidated before this release:
+
+| Existing legacy catalog IDs | Existing canonical catalog ID |
+|---|---|
+| `bch-cornhole-champ`, `bte-cornhole-win`, `fri-cornhole-champ`, `gen-cornhole-score` | `cornhole-win` |
+| `bch-sunrise-photo`, `fri-sunrise-watch` | `sunrise-view` |
+| `bch-cold-plunge`, `fri-cold-plunge`, `sea-cold-plunge` | `cold-water-plunge` |
+| `bch-arm-wrestle`, `fri-arm-wrestle`, `gen-arm-wrestle` | `safe-arm-wrestle` |
+| `bch-karaoke-solo`, `bte-karaoke-verse`, `fri-karaoke-song` | `karaoke-song` |
+| `bch-group-photo-pose`, `bte-group-selfie`, `gen-group-photo` | `group-photo-pose` |
 
 The existing `CONSOLIDATED_SEED_IDS` pattern remains the public-library filter. Recommended activity arrays are updated to canonical IDs.
 
@@ -216,6 +234,7 @@ The content test suite adds:
 - Every public activity ID is unique.
 - Every recommended ID resolves to a public activity.
 - No two activities visible for the same occasion share a normalized title.
+- The event-specific seed count guard is lowered from 190 to 170 to account for intentional consolidation while retaining broad occasion coverage checks.
 - The legacy IDs in the migration table are absent from the public library.
 - Every legacy alias resolves to an existing canonical public activity.
 - The known blind-taste, old-photo, coffee, timeline, cleanup, toast, table-setting, and game-win families resolve to their canonical entries.
