@@ -44,7 +44,12 @@ export interface Regions {
 
 const REGION_GAP = 0.25;
 
-export function partitionRegions(spec: BoardSpec): Regions {
+export interface RegionDimensions {
+  headerH?: number;
+  rulesH?: number;
+}
+
+export function partitionRegions(spec: BoardSpec, dimensions: RegionDimensions = {}): Regions {
   const { w: pageW, h: pageH } = POSTER_SIZES[spec.posterSize];
   const margin = clamp(pageH * 0.015, 0.5, 1.0);
   const content: Box = { x: margin, y: margin, w: pageW - 2 * margin, h: pageH - 2 * margin };
@@ -55,8 +60,11 @@ export function partitionRegions(spec: BoardSpec): Regions {
   // of the page eaten by the masthead. 1.1in doesn't bind at any real size
   // (every poster is pageH >= 18, and even Letter's 1.21in clears it), so
   // posters are untouched; it's just a safe lower bound.
-  const headerH = clamp(pageH * 0.11, 1.1, 6);
-  const rulesH = spec.rulesContent.trim() || spec.rules.length > 0 || Boolean(spec.footnote) ? clamp(pageH * 0.07, 1.5, 4) : 0;
+  const headerH = dimensions.headerH ?? clamp(pageH * 0.11, 1.1, 6);
+  const hasRules = spec.includeRules
+    && Boolean(spec.rulesContent.trim() || spec.rules.length > 0 || spec.footnote);
+  const defaultRulesH = hasRules ? clamp(pageH * 0.07, 1.5, 4) : 0;
+  const rulesH = hasRules ? (dimensions.rulesH ?? defaultRulesH) : 0;
 
   const bodyTop = content.y + headerH + REGION_GAP;
   const bodyBottom = content.y + content.h - (rulesH ? rulesH + REGION_GAP : 0);

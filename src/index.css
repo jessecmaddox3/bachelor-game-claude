@@ -433,6 +433,7 @@ button.ghost:hover { color: var(--c-navy); background: var(--c-card); border-col
 .selection-count strong, .selection-count span { display: block; }
 .selection-count strong { font-size: 23px; line-height: 1; }
 .selection-count span { margin-top: 3px; font-size: 10px; font-weight: 500; text-transform: uppercase; }
+.selection-count .selection-fit { max-width: 120px; margin-top: 7px; padding-top: 6px; border-top: 1px solid color-mix(in srgb, var(--c-primary) 30%, var(--c-border)); font-size: 9px; font-weight: 750; line-height: 1.25; text-transform: none; }
 .picker-toolbar { display: grid; grid-template-columns: minmax(220px, .7fr) minmax(260px, 1.3fr); gap: 12px; padding: 15px; background: var(--c-card); border: 1px solid var(--c-border-soft); border-radius: var(--radius-card); }
 .picker-toolbar-single { grid-template-columns: 1fr; }
 .picker-toolbar .field { margin: 0; }
@@ -500,8 +501,27 @@ table.activities input:not([type='checkbox']) { width: 100%; min-width: 78px; mi
 .compact-button { min-height: 36px !important; padding: 5px 8px !important; font-size: 11px; }
 .compact-button[aria-disabled='true'] { color: var(--c-muted); opacity: .55; cursor: not-allowed; }
 .poster-size-fixed { margin: 0; padding: 10px 12px; color: var(--c-navy); background: var(--c-card); border: 1px solid var(--c-border); border-radius: 9px; font-size: 13px; font-weight: 700; }
+.letter-layout-panel { margin: 14px 0 18px; padding: 13px; background: var(--c-wash); border: 1px solid color-mix(in srgb, var(--c-primary) 38%, var(--c-border)); border-radius: var(--radius-card); }
+.letter-layout-heading strong, .letter-layout-heading span { display: block; }
+.letter-layout-heading strong { color: var(--c-navy-deep); font-family: var(--font-display); font-size: 13px; }
+.letter-layout-heading span { margin-top: 2px; color: var(--c-muted); font-size: 10px; }
+.letter-header-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; margin: 12px 0 0; padding: 0; border: 0; }
+.letter-header-options legend { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
+.letter-header-option { display: grid; grid-template-columns: 18px minmax(0, 1fr); align-items: start; gap: 8px; min-height: 72px; padding: 10px; background: var(--c-white); border: 1px solid var(--c-border); border-radius: 9px; cursor: pointer; }
+.letter-header-option:has(input:checked) { border-color: var(--c-primary-deep); box-shadow: inset 0 0 0 1px var(--c-primary-deep); }
+.letter-header-option:has(input:disabled) { opacity: .55; cursor: not-allowed; }
+.letter-header-option input { width: 17px; height: 17px; margin: 1px 0 0; accent-color: var(--c-primary-deep); }
+.letter-header-option strong, .letter-header-option small { display: block; }
+.letter-header-option strong { color: var(--c-navy-deep); font-size: 11px; }
+.letter-header-option small { margin-top: 3px; color: var(--c-muted); font-size: 9px; line-height: 1.35; }
+.design-letter-fit, .letter-fit-guidance { margin-top: 9px; font-size: 11px; font-weight: 650; line-height: 1.45; }
+.quality .letter-fit-guidance { padding-top: 7px; border-top: 1px solid color-mix(in srgb, var(--c-white) 35%, transparent); font-weight: 550; }
+.problems .letter-fit-guidance { font-weight: 700; }
+.control-note, .rules-excluded-note { margin: 8px 0 0; color: var(--c-muted); font-size: 10px; line-height: 1.4; }
 .design-options { margin-top: 4px; }
 .stacked-fields { display: grid; gap: 8px; margin-bottom: 12px; }
+.rules-visibility-control { margin-bottom: 2px; }
+.rules-excluded-note { margin: -2px 0 10px 27px; }
 .rules-title-field { margin-bottom: 10px; }
 .rules-content-shell { overflow: hidden; background: var(--c-white); border: 1px solid var(--c-border); border-radius: 10px; }
 .rules-toolbar { display: flex; align-items: center; gap: 7px; padding: 7px 9px; background: var(--c-card); border-bottom: 1px solid var(--c-border-soft); }
@@ -557,7 +577,7 @@ table.activities input:not([type='checkbox']) { width: 100%; min-width: 78px; mi
   .occasion-layout { grid-template-columns: 1fr; }
   .occasion-options { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .section-heading { gap: 10px; }
-  .setup-grid, .board-save-grid, .options-grid, .color-grid, .export-options { grid-template-columns: 1fr; }
+  .setup-grid, .board-save-grid, .options-grid, .color-grid, .export-options, .letter-header-options { grid-template-columns: 1fr; }
   .board-save-action { grid-template-columns: 1fr; }
   .setup-wide-field { grid-column: auto; }
   .player-composer { grid-template-columns: 1fr; }

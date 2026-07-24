@@ -4,6 +4,11 @@ import type { Box } from '../geometry';
 import { PT_PER_IN } from '../geometry';
 import type { FontMetrics } from '../fonts/metrics';
 import { wrapToWidth, hardEllipsize } from './wrap';
+import {
+  LETTER_POINTS_HEADER,
+  measureCombinedScore,
+  usesCombinedLetterScoring,
+} from './scoring';
 
 // Print-informed floors (from the spec)
 export const FLOOR_PT = 9;
@@ -107,9 +112,12 @@ function tryFit(grid: Box, spec: BoardSpec, m: FontMetrics, pt: number): GridLay
   // so uniformly short player names can never squeeze it out of the header band.
   // When the max-points column is present, its rotated header needs the same guarantee.
   const hasMax = spec.activities.some((a) => a.maxPoints !== undefined);
+  const combinedLetterScoring = usesCombinedLetterScoring(spec);
   const ppNeed = Math.max(
-    m.widthIn(POINTS_HEADER, 'bodyBold', Math.min(pt, 10)),
-    hasMax ? m.widthIn(MAX_POINTS_HEADER, 'bodyBold', Math.min(pt, 10)) : 0,
+    m.widthIn(combinedLetterScoring ? LETTER_POINTS_HEADER : POINTS_HEADER, 'bodyBold', Math.min(pt, 10)),
+    hasMax && !combinedLetterScoring
+      ? m.widthIn(MAX_POINTS_HEADER, 'bodyBold', Math.min(pt, 10))
+      : 0,
   );
   let headerBandH = Math.max(longestName, ppNeed) + 2 * CELL_PAD;
   let playerNames = [...spec.players];
@@ -129,12 +137,14 @@ function tryFit(grid: Box, spec: BoardSpec, m: FontMetrics, pt: number): GridLay
     Math.max(
       spec.honoreeBonusRow ? m.widthIn(pointsLabel({ min: -5, max: 5 }, spec.pointsRangeFormat), 'bodyBold', pt) : 0,
       spec.totalsTarget !== undefined ? m.widthIn(String(spec.totalsTarget), 'bodyBold', pt) : 0,
-      ...spec.activities.map((a) => m.widthIn(pointsLabel(a.points, spec.pointsRangeFormat), 'bodyBold', pt)),
+      ...spec.activities.map((a) => combinedLetterScoring
+        ? measureCombinedScore(a, spec.pointsRangeFormat, pt, m).totalW
+        : m.widthIn(pointsLabel(a.points, spec.pointsRangeFormat), 'bodyBold', pt)),
     ) + 2 * CELL_PAD,
   );
 
   // Max-points column only exists when some activity carries a maxPoints cap.
-  const maxPointsColW = hasMax
+  const maxPointsColW = hasMax && !combinedLetterScoring
     ? Math.max(
         MIN_COL_W,
         Math.max(

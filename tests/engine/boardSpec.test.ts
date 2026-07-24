@@ -10,6 +10,12 @@ describe('boardSpecSchema', () => {
     expect(spec.activities[0].bonus).toBe(false);
   });
 
+  it('defaults older specs to the established Letter presentation', () => {
+    const spec = makeSpec();
+    expect(spec.letterHeaderStyle).toBe('large');
+    expect(spec.includeRules).toBe(true);
+  });
+
   it('accepts TBD points and bonus rows', () => {
     const spec = makeSpec({
       activities: [

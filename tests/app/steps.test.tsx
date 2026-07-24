@@ -184,6 +184,25 @@ describe('SetupStep', () => {
 });
 
 describe('ActivitiesStep', () => {
+  it('shows Letter fit guidance beside the selected count when available', () => {
+    useWizardStore.getState().patch({
+      posterSize: '8.5x11',
+      activities: Array.from({ length: 10 }, (_, i) => ({
+        uid: crypto.randomUUID(),
+        name: `Activity ${i + 1}`,
+        points: 1,
+        bonus: false,
+      })),
+    });
+    render(<ActivitiesStep fit={{
+      selectedActivities: 10,
+      estimatedMaxActivities: 16,
+      estimatedAdditionalActivities: 6,
+      overBy: 0,
+    }} />);
+    expect(screen.getByText(/about 6 more fit/i)).toBeDefined();
+  });
+
   it('adds from the library and edits points', async () => {
     useWizardStore.getState().patch({ activities: [], libraryOccasion: 'general' });
     render(<ActivitiesStep />);
@@ -422,6 +441,61 @@ describe('DesignStep', () => {
     render(<DesignStep {...props} />);
     await userEvent.selectOptions(screen.getByLabelText(/poster size/i), '36x48');
     expect(useWizardStore.getState().draft.posterSize).toBe('36x48');
+  });
+
+  it('offers Large and Compact header choices only for portrait Letter', async () => {
+    const { rerender } = render(<DesignStep {...props} />);
+    expect(screen.queryByRole('radio', { name: /large header/i })).toBeNull();
+
+    useWizardStore.getState().patch({ posterSize: '8.5x11' });
+    rerender(<DesignStep {...props} />);
+    expect(screen.getByRole('radio', { name: /large header/i })).toBeChecked();
+    await userEvent.click(screen.getByRole('radio', { name: /compact header/i }));
+    expect(useWizardStore.getState().draft.letterHeaderStyle).toBe('compact');
+  });
+
+  it('hides printed rules without deleting their editor content', async () => {
+    useWizardStore.getState().patch({
+      posterSize: '8.5x11',
+      rulesContent: 'Keep this exact rule.',
+    });
+    render(<DesignStep {...props} />);
+    const toggle = screen.getByRole('checkbox', { name: /include rules on printout/i });
+    expect(toggle).toBeChecked();
+    await userEvent.click(toggle);
+    expect(useWizardStore.getState().draft.includeRules).toBe(false);
+    expect(useWizardStore.getState().draft.rulesContent).toBe('Keep this exact rule.');
+    expect(screen.getByText(/saved, not included on the printout/i)).toBeDefined();
+    expect(screen.getByLabelText(/^rules content$/i)).toHaveValue('Keep this exact rule.');
+  });
+
+  it('keeps Compact Header and corner boxes from creating an illegible combination', async () => {
+    useWizardStore.getState().patch({
+      posterSize: '8.5x11',
+      cornerBoxes: ['WINNER'],
+    });
+    const { rerender } = render(<DesignStep {...props} />);
+    const compactHeader = screen.getByRole('radio', { name: /compact header/i });
+    expect(compactHeader).toBeDisabled();
+    expect(compactHeader).toHaveAttribute('aria-describedby', 'compact-header-disabled-note');
+
+    useWizardStore.getState().patch({ cornerBoxes: [], letterHeaderStyle: 'compact' });
+    rerender(<DesignStep {...props} />);
+    const addCornerBox = screen.getByRole('button', { name: /corner box/i });
+    expect(addCornerBox).toBeDisabled();
+    expect(addCornerBox).toHaveAttribute('aria-describedby', 'corner-box-disabled-note');
+    expect(screen.getByText(/choose large header to add corner boxes/i)).toBeDefined();
+  });
+
+  it('hides only the separate max-points tint control on Letter', () => {
+    useWizardStore.getState().patch({ posterSize: '8.5x11' });
+    const { rerender } = render(<DesignStep {...props} />);
+    expect(screen.queryByLabelText(/^max points column tint$/i)).toBeNull();
+    expect(screen.getByLabelText(/^points column tint$/i)).toBeDefined();
+
+    useWizardStore.getState().patch({ posterSize: '24x36' });
+    rerender(<DesignStep {...props} />);
+    expect(screen.getByLabelText(/^max points column tint$/i)).toBeDefined();
   });
 
   it('locks the poster size to a fixed note for the landscape-brackets layout', () => {

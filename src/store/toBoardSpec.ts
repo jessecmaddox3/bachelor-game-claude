@@ -15,6 +15,8 @@ export type Draft = {
   libraryOccasion: ActivityOccasion;
   posterSize: BoardSpec['posterSize'];
   template: BoardSpec['template'];
+  letterHeaderStyle: BoardSpec['letterHeaderStyle'];
+  includeRules: boolean;
   brackets: BoardSpec['brackets'];
   pointsRangeFormat: BoardSpec['pointsRangeFormat'];
   totalsTarget?: number;
@@ -50,6 +52,8 @@ export function defaultDraft(): Draft {
     libraryOccasion: 'kids-weekend',
     posterSize: '24x36',
     template: 'portrait',
+    letterHeaderStyle: 'large',
+    includeRules: true,
     brackets: [],
     pointsRangeFormat: 'words',
     totalsTarget: undefined,

@@ -5,6 +5,7 @@ import { App } from '../../src/app/App';
 import { testMetrics } from '../helpers/loadFonts';
 import { useWizardStore } from '../../src/store/wizardStore';
 import { createJesse2017Draft } from '../../src/content/occasions';
+import { makeDraft } from '../helpers/fixtures';
 
 afterEach(() => {
   cleanup();
@@ -32,5 +33,16 @@ describe('App', () => {
     fireEvent.click(screen.getByText('Start over'));
     expect(window.confirm).toHaveBeenCalledOnce();
     expect(useWizardStore.getState().draft.honoree).toBe('');
+  });
+
+  it('shows Letter fit guidance with the authoritative preview', async () => {
+    useWizardStore.getState().replaceDraft(makeDraft({
+      posterSize: '8.5x11',
+      players: ['Jack', 'Bobbie', 'Shasha', 'Hunter', 'SG'],
+      includeRules: false,
+    }));
+    render(<App metrics={testMetrics()} buffers={null} />);
+    await waitFor(() => expect(screen.getByTestId('letter-fit-guidance')).toBeDefined(), { timeout: 5000 });
+    expect(screen.getByTestId('letter-fit-guidance')).toHaveTextContent(/selected.*about/i);
   });
 });

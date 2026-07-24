@@ -141,6 +141,8 @@ export function createJesse2017Draft(): Draft {
     libraryOccasion: 'bachelor',
     posterSize: '60x48',
     template: 'landscapeBrackets',
+    letterHeaderStyle: 'large',
+    includeRules: true,
     brackets: [
       { title: 'BEER PONG', slots: 8, teamSize: 2 },
       { title: 'PING PONG', slots: 16, teamSize: 1 },

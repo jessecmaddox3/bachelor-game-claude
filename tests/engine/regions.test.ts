@@ -19,6 +19,13 @@ describe('partitionRegions', () => {
     expect(r.rules).toBeUndefined();
   });
 
+  it('honors measured header and rules heights from the portrait planner', () => {
+    const spec = makeSpec({ posterSize: '8.5x11' });
+    const r = partitionRegions(spec, { headerH: 0.65, rulesH: 0 });
+    expect(r.header.h).toBe(0.65);
+    expect(r.rules).toBeUndefined();
+  });
+
   it('gives the grid full width when no rail is requested', () => {
     const r = partitionRegions(makeSpec());
     expect(r.rail).toBeUndefined();

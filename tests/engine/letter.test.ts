@@ -4,6 +4,7 @@ import { buildBoard } from '../../src/engine/buildBoard';
 import { renderPdf } from '../../src/engine/render/pdf';
 import { solveGrid, FLOOR_PT } from '../../src/engine/layout/gridSolver';
 import { partitionRegions } from '../../src/engine/layout/regions';
+import { planPortrait } from '../../src/engine/layout/portraitPlan';
 import { boardSpecSchema, POSTER_SIZES } from '../../src/models/boardSpec';
 import { PT_PER_IN } from '../../src/engine/geometry';
 import { makeSpec } from '../helpers/fixtures';
@@ -135,5 +136,144 @@ describe('US Letter (8.5x11) home-printer board', () => {
     // a nearly empty sheet should render comfortably larger than the floor.
     expect(built.quality.bodyPt).toBeGreaterThan(FLOOR_PT);
     expect(built.quality.grade).toBe('good');
+  });
+
+  it('omits printed rules without deleting their source content', () => {
+    const spec = kidsWeekend({ includeRules: false });
+    expect(spec.rules).toHaveLength(2);
+    const built = buildBoard(spec, m);
+    expect(built.ok).toBe(true);
+    if (!built.ok) return;
+    const strings = built.scene.primitives
+      .filter((primitive) => primitive.kind === 'text')
+      .map((primitive) => primitive.text);
+    expect(strings).not.toContain('GAME RULES:');
+    expect(strings.join(' ')).not.toContain('Score your own points honestly.');
+  });
+
+  it('gives short Letter rules a smaller measured band than longer rules', () => {
+    const short = planPortrait(kidsWeekend({
+      rules: [],
+      rulesContent: '**PLAY FAIR**\nScore honestly.',
+    }), m);
+    const long = planPortrait(kidsWeekend({
+      rules: [],
+      rulesContent: [
+        '**HONOR SYSTEM**\nMark only activities you genuinely complete.',
+        '**CONSENT**\nAnyone may skip or adapt an activity that feels unsafe or inaccessible.',
+        '**POINTS**\nUse the listed points unless the group agrees on a change.',
+        '**GOOD SPIRIT**\nThe goal is shared stories and good effort.',
+      ].join('\n\n'),
+    }), m);
+    expect(short.ok).toBe(true);
+    expect(long.ok).toBe(true);
+    if (!short.ok || !long.ok) return;
+    expect(short.regions.rules?.h).toBeLessThan(long.regions.rules?.h ?? 0);
+    expect(short.rulesPlan?.pt).toBeGreaterThanOrEqual(8);
+    expect(long.rulesPlan?.pt).toBeGreaterThanOrEqual(8);
+  });
+
+  it('fails with actionable guidance when included Letter rules exceed their maximum band', () => {
+    const planned = planPortrait(kidsWeekend({
+      rules: [],
+      rulesContent: `**VERY LONG RULES**\n${'word '.repeat(4_000)}`,
+    }), m);
+    expect(planned.ok).toBe(false);
+    if (planned.ok) return;
+    expect(planned.kind).toBe('rules');
+    expect(planned.reason).toMatch(/shorten|turn off/i);
+  });
+
+  it('renders Compact Header title and secondary copy on one measured line', () => {
+    const spec = kidsWeekend({
+      letterHeaderStyle: 'compact',
+      title: 'CAMP SHEISHEI',
+      subtitle: 'KIDS WEEKEND',
+    });
+    const planned = planPortrait(spec, m);
+    expect(planned.ok).toBe(true);
+    if (!planned.ok) return;
+    expect(planned.regions.header.h).toBe(0.65);
+    expect(planned.compactHeader).toBeDefined();
+
+    const built = buildBoard(spec, m);
+    expect(built.ok).toBe(true);
+    if (!built.ok) return;
+    const textRuns = built.scene.primitives.filter((primitive) => primitive.kind === 'text');
+    const title = textRuns.find((run) => run.text === 'CAMP SHEISHEI');
+    const secondary = textRuns.find((run) => run.text === 'KIDS WEEKEND');
+    expect(title).toBeDefined();
+    expect(secondary).toBeDefined();
+    expect(title!.box.y + title!.box.h / 2).toBeCloseTo(secondary!.box.y + secondary!.box.h / 2, 3);
+    expect(overflowingRuns(built.scene, m)).toEqual([]);
+  });
+
+  it('combines legacy honoree and subtitle as Compact Header secondary copy', () => {
+    const built = buildBoard(kidsWeekend({
+      letterHeaderStyle: 'compact',
+      honoree: 'Shasha',
+      subtitle: 'Kids Weekend',
+    }), m);
+    expect(built.ok).toBe(true);
+    if (!built.ok) return;
+    const textRuns = built.scene.primitives
+      .filter((primitive) => primitive.kind === 'text');
+    const strings = textRuns.map((primitive) => primitive.text);
+    expect(strings).toContain('Shasha · Kids Weekend');
+    expect(textRuns.some((run) => run.text === 'Shasha' && run.rotate === undefined)).toBe(false);
+  });
+
+  it('fails rather than dropping an overlong Compact Header headline', () => {
+    const planned = planPortrait(kidsWeekend({
+      letterHeaderStyle: 'compact',
+      title: 'W'.repeat(60),
+      subtitle: 'W'.repeat(80),
+    }), m);
+    expect(planned.ok).toBe(false);
+    if (planned.ok) return;
+    expect(planned.kind).toBe('compact-header');
+    expect(planned.reason).toMatch(/shorten|large header/i);
+  });
+
+  it('rejects Compact Header with corner boxes instead of shrinking them illegibly', () => {
+    const built = buildBoard(kidsWeekend({
+      letterHeaderStyle: 'compact',
+      cornerBoxes: ['WINNER'],
+    }), m);
+    expect(built.ok).toBe(false);
+    if (built.ok) return;
+    expect(built.reason).toMatch(/compact header.*corner boxes/i);
+  });
+
+  it('renders points and smaller parenthetical maximums in one Letter column', () => {
+    const built = buildBoard(kidsWeekend({
+      includeRules: false,
+      activities: [
+        { name: 'Repeatable game', points: 3, maxPoints: 6 },
+        { name: 'Range game', points: { min: 1, max: 5 }, maxPoints: 10 },
+        { name: 'Pending game', points: 'TBD' },
+        { name: 'Fourth game', points: 2 },
+        { name: 'Fifth game', points: 1 },
+      ],
+    }), m);
+    expect(built.ok).toBe(true);
+    if (!built.ok) return;
+    const textRuns = built.scene.primitives.filter((primitive) => primitive.kind === 'text');
+    const strings = textRuns.map((run) => run.text);
+    expect(strings).toContain('POINTS');
+    expect(strings).toContain('(MAX)');
+    expect(strings).not.toContain('MAX POINTS');
+    expect(strings).toContain('(6)');
+    expect(strings).toContain('(10)');
+    expect(strings).toContain('1 to 5');
+    expect(strings).toContain('TBD');
+    const primary = textRuns.find((run) => run.text === '3');
+    const maximum = textRuns.find((run) => run.text === '(6)');
+    expect(primary).toBeDefined();
+    expect(maximum).toBeDefined();
+    expect(maximum!.sizePt).toBeLessThan(primary!.sizePt);
+    expect(maximum!.box.y + maximum!.box.h / 2).toBeCloseTo(primary!.box.y + primary!.box.h / 2, 3);
+    expect(overflowingRuns(built.scene, m)).toEqual([]);
+    expect(outOfPage(built.scene)).toEqual([]);
   });
 });

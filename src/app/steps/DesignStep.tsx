@@ -5,6 +5,7 @@ import { parsePointsInput, toBoardSpec } from '../../store/toBoardSpec';
 import { buildBoard, planPngScale, POSTER_SIZES, type FontMetrics, type FontBuffers, type PosterSizeId } from '../../engine';
 import { pointsLabel, POSTER_SIZE_LABELS } from '../../models/boardSpec';
 import { exportPdf, exportPng, exportSvg } from '../export';
+import { letterFitMessage } from '../letterFit';
 import type { BoardState } from '../useBoard';
 
 const HEX = /^#[0-9a-fA-F]{6}$/;
@@ -36,6 +37,11 @@ export function DesignStep({ board, metrics, buffers }: { board: BoardState; met
   const setTheme = (p: Partial<typeof draft.theme>) => patch({ theme: { ...draft.theme, ...p } });
   const setActivity = (i: number, changes: Partial<typeof draft.activities[number]>) =>
     patch({ activities: draft.activities.map((row, j) => (j === i ? { ...row, ...changes } : row)) });
+  const isLetter = draft.template === 'portrait' && draft.posterSize === '8.5x11';
+  const compactHeaderActive = isLetter && draft.letterHeaderStyle === 'compact';
+  const fit = board.status === 'ready' || board.status === 'infeasible'
+    ? board.fit
+    : undefined;
 
   const formatRules = (kind: 'bold' | 'bullets') => {
     const editor = rulesEditor.current;
@@ -116,13 +122,50 @@ export function DesignStep({ board, metrics, buffers }: { board: BoardState; met
             </select>
           )}
         </div>
+        {isLetter && (
+          <div className="letter-layout-panel">
+            <div className="letter-layout-heading">
+              <strong>Letter layout</strong>
+              <span>Choose how much of the page the title uses.</span>
+            </div>
+            <fieldset className="letter-header-options">
+              <legend>Letter header</legend>
+              <label className="letter-header-option">
+                <input
+                  type="radio"
+                  name="letterHeaderStyle"
+                  value="large"
+                  checked={draft.letterHeaderStyle === 'large'}
+                  onChange={() => patch({ letterHeaderStyle: 'large' })}
+                />
+                <span><strong>Large Header</strong><small>More visual impact, less room for activities.</small></span>
+              </label>
+              <label className="letter-header-option">
+                <input
+                  type="radio"
+                  name="letterHeaderStyle"
+                  value="compact"
+                  checked={draft.letterHeaderStyle === 'compact'}
+                  disabled={draft.cornerBoxes.length > 0}
+                  aria-describedby={draft.cornerBoxes.length > 0 ? 'compact-header-disabled-note' : undefined}
+                  onChange={() => patch({ letterHeaderStyle: 'compact' })}
+                />
+                <span><strong>Compact Header</strong><small>Title and details share a slim header.</small></span>
+              </label>
+            </fieldset>
+            {draft.cornerBoxes.length > 0 && (
+              <p className="control-note" id="compact-header-disabled-note">Remove the corner boxes to use Compact Header.</p>
+            )}
+            {fit && <div className="design-letter-fit">{letterFitMessage(fit)}</div>}
+          </div>
+        )}
         <div className="theme-presets">
           {THEME_PRESETS.map((p) => (
             <button key={p.id} className="chip" title={p.description} onClick={() => patch({ theme: structuredClone(p.theme) })}>{p.name}</button>
           ))}
         </div>
         <div className="color-grid">
-          {COLOR_FIELDS.map(({ key, label, clearable }) => (
+          {COLOR_FIELDS.filter(({ key }) => !(isLetter && key === 'maxPointsColTint')).map(({ key, label, clearable }) => (
             <div className="field color-field" key={key}>
               <label htmlFor={`c-${key}`}>{label}</label>
               <div className="color-control">
@@ -192,11 +235,31 @@ export function DesignStep({ board, metrics, buffers }: { board: BoardState; met
             </div>
           ))}
         </div>
-        {draft.cornerBoxes.length < 4 && <button className="secondary" onClick={() => patch({ cornerBoxes: [...draft.cornerBoxes, 'NEW BOX'] })}>+ Corner box</button>}
+        {draft.cornerBoxes.length < 4 && (
+          <button
+            className="secondary"
+            disabled={compactHeaderActive}
+            aria-describedby={compactHeaderActive ? 'corner-box-disabled-note' : undefined}
+            onClick={() => patch({ cornerBoxes: [...draft.cornerBoxes, 'NEW BOX'] })}
+          >
+            + Corner box
+          </button>
+        )}
+        {compactHeaderActive && <p className="control-note" id="corner-box-disabled-note">Choose Large Header to add corner boxes.</p>}
       </section>
 
       <section className="design-section" aria-labelledby="rules-heading">
         <div className="section-heading compact"><div><h3 id="rules-heading">Rules</h3><p>Keep the honor-system framing or add instructions for your group.</p></div></div>
+        <div className="field checkbox-field rules-visibility-control">
+          <input
+            id="includeRules"
+            type="checkbox"
+            checked={draft.includeRules}
+            onChange={(event) => patch({ includeRules: event.target.checked })}
+          />
+          <label htmlFor="includeRules">Include rules on printout</label>
+        </div>
+        {!draft.includeRules && <p className="rules-excluded-note">Saved, not included on the printout.</p>}
         <div className="field rules-title-field">
           <label htmlFor="rulesTitle">Rules title</label>
           <input id="rulesTitle" value={draft.rulesTitle} maxLength={80} onChange={(e) => patch({ rulesTitle: e.target.value })} placeholder="GAME RULES:" />

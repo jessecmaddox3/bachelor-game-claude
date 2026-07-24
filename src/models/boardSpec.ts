@@ -66,6 +66,10 @@ export const boardSpecSchema = z.object({
     .max(80),
   posterSize: z.enum(POSTER_SIZE_IDS),
   template: z.enum(['portrait', 'landscapeBrackets']).default('portrait'),
+  /** Letter-only title treatment. Other sizes retain their established masthead. */
+  letterHeaderStyle: z.enum(['large', 'compact']).default('large'),
+  /** Controls printed rule visibility without deleting the authored rule source. */
+  includeRules: z.boolean().default(true),
   brackets: z.array(z.object({
     title: z.string().min(1).max(50),
     slots: z.union([z.literal(8), z.literal(16)]),

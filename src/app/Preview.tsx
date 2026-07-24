@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { BoardState } from './useBoard';
 import { PreviewZoom } from './PreviewZoom';
+import { letterFitMessage } from './letterFit';
 
 export function Preview({ board }: { board: BoardState }) {
   const [zoomOpen, setZoomOpen] = useState(false);
@@ -24,6 +25,11 @@ export function Preview({ board }: { board: BoardState }) {
         <div className={`quality quality-${board.quality.grade}`} data-testid="quality-badge">
           {board.quality.grade.toUpperCase()} · {board.quality.bodyPt}pt
           <div className="advice">{board.quality.advice.join(' ')}</div>
+          {board.fit && (
+            <div className="letter-fit-guidance" data-testid="letter-fit-guidance">
+              {letterFitMessage(board.fit)}
+            </div>
+          )}
         </div>
       )}
       {board.status === 'invalid' && (
@@ -35,7 +41,14 @@ export function Preview({ board }: { board: BoardState }) {
         </div>
       )}
       {board.status === 'infeasible' && (
-        <div className="problems" data-testid="quality-badge">{board.reason}</div>
+        <div className="problems" data-testid="quality-badge">
+          {board.reason}
+          {board.fit && (
+            <div className="letter-fit-guidance" data-testid="letter-fit-guidance">
+              {letterFitMessage(board.fit)}
+            </div>
+          )}
+        </div>
       )}
       {board.status === 'ready' ? (
         <div className="preview">

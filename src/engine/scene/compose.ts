@@ -2,10 +2,17 @@ import type { BoardSpec } from '../../models/boardSpec';
 import { pointsLabel } from '../../models/boardSpec';
 import type { Regions } from '../layout/regions';
 import type { GridLayout } from '../layout/gridSolver';
+import type { CompactHeaderPlan } from '../layout/portraitPlan';
 import type { FontMetrics, FontId } from '../fonts/metrics';
 import type { Scene, Primitive } from './types';
 import type { Box } from '../geometry';
 import { fitSizePt, fitWrappedText, wrapToWidth } from '../layout/wrap';
+import {
+  LETTER_MAX_POINTS_SUBHEADER,
+  LETTER_POINTS_HEADER,
+  measureCombinedScore,
+  usesCombinedLetterScoring,
+} from '../layout/scoring';
 import {
   CELL_PAD,
   POINTS_HEADER,
@@ -24,11 +31,12 @@ export function composeScene(
   layout: GridLayout,
   m: FontMetrics,
   rulesPlan?: RulesPlan,
+  compactHeader?: CompactHeaderPlan,
 ): Scene {
   const prims: Primitive[] = [];
   prims.push({ kind: 'rect', box: { x: 0, y: 0, w: regions.pageW, h: regions.pageH }, fill: PAGE_BG });
 
-  composeHeader(spec, regions, m, prims);
+  composeHeader(spec, regions, m, prims, compactHeader);
   if (spec.cornerBoxes.length > 0) composeCornerBoxes(spec, regions, m, prims);
   if (regions.rail) composeRail(regions.rail, m, prims);
   composeGrid(spec, regions.grid, layout, m, prims);
@@ -99,8 +107,56 @@ function fittedLine(
   return pt;
 }
 
-function composeHeader(spec: BoardSpec, regions: Regions, m: FontMetrics, prims: Primitive[]) {
+function composeHeader(
+  spec: BoardSpec,
+  regions: Regions,
+  m: FontMetrics,
+  prims: Primitive[],
+  compact?: CompactHeaderPlan,
+) {
   const h = regions.header;
+  if (compact) {
+    const totalW = compact.titleW + compact.gapW + compact.secondaryW;
+    const startX = h.x + (h.w - totalW) / 2;
+    const titleH = m.lineHeightIn('display', compact.titlePt);
+    prims.push({
+      kind: 'text',
+      box: {
+        x: startX,
+        y: h.y + (h.h - titleH) / 2,
+        w: compact.titleW,
+        h: titleH,
+      },
+      text: spec.title,
+      fontId: 'display',
+      sizePt: compact.titlePt,
+      color: spec.theme.titleColor,
+      align: 'left',
+    });
+    if (compact.secondary && compact.secondaryPt) {
+      const secondaryH = m.lineHeightIn('bodyBold', compact.secondaryPt);
+      prims.push({
+        kind: 'text',
+        box: {
+          x: startX + compact.titleW + compact.gapW,
+          y: h.y + (h.h - secondaryH) / 2,
+          w: compact.secondaryW,
+          h: secondaryH,
+        },
+        text: compact.secondary,
+        fontId: 'bodyBold',
+        sizePt: compact.secondaryPt,
+        color: spec.theme.accentColor,
+        align: 'left',
+      });
+    }
+    if (spec.theme.headerDivider) {
+      const dy = h.y + h.h + 0.1;
+      prims.push({ kind: 'line', x1: h.x, y1: dy, x2: h.x + h.w, y2: dy, color: spec.theme.accentColor, widthIn: 0.03 });
+    }
+    return;
+  }
+
   const subtitle = spec.subtitle;
   const hasSubtitle = Boolean(subtitle);
   const hasHonoree = Boolean(spec.honoree);
@@ -164,6 +220,7 @@ function composeGrid(spec: BoardSpec, grid: Box, L: GridLayout, m: FontMetrics, 
   const gridBottom = rowY(L.displayRows + 1); // activities + write-ins + bonus + totals row
   const lineH = m.lineHeightIn('body', L.bodyPt);
   const { accentColor, activityColor } = spec.theme;
+  const combinedLetterScoring = usesCombinedLetterScoring(spec);
 
   // Alternate-row tint (subtle blue per theme), behind everything else in the grid
   for (let r = 0; r < L.displayRows; r++) {
@@ -235,7 +292,12 @@ function composeGrid(spec: BoardSpec, grid: Box, L: GridLayout, m: FontMetrics, 
       prims.push({ kind: 'text', box: subBox, text: sub, fontId: 'bodyBold', sizePt: subPt, color: INK, align: 'left', rotate: -90 });
     }
   };
-  rotatedHeader(pointsX, L.pointsColW, POINTS_HEADER, POINTS_SUBHEADER);
+  rotatedHeader(
+    pointsX,
+    L.pointsColW,
+    combinedLetterScoring ? LETTER_POINTS_HEADER : POINTS_HEADER,
+    combinedLetterScoring ? LETTER_MAX_POINTS_SUBHEADER : POINTS_SUBHEADER,
+  );
   if (L.maxPointsColW > 0) {
     rotatedHeader(maxX, L.maxPointsColW, MAX_POINTS_HEADER, MAX_POINTS_SUBHEADER);
   }
@@ -283,30 +345,78 @@ function composeGrid(spec: BoardSpec, grid: Box, L: GridLayout, m: FontMetrics, 
       });
       ty += taskLineH;
     }
-    const pointsText = pointsLabel(a.points, spec.pointsRangeFormat);
     const pointsBox: Box = {
       x: pointsX + CELL_PAD,
       y: rowY(r) + CELL_PAD,
       w: L.pointsColW - 2 * CELL_PAD,
       h: L.rowH - 2 * CELL_PAD,
     };
-    const pointsPt = fitSizePt(pointsText, pointsBox.w, pointsBox.h, 'bodyBold', m, 20, L.bodyPt) ?? L.bodyPt;
-    const pointsLineH = m.lineHeightIn('bodyBold', pointsPt);
-    prims.push({
-      kind: 'text',
-      box: {
-        x: pointsBox.x,
-        y: rowY(r) + (L.rowH - pointsLineH) / 2,
-        w: pointsBox.w,
-        h: pointsLineH,
-      },
-      text: pointsText,
-      fontId: 'bodyBold',
-      sizePt: pointsPt,
-      color: INK,
-      align: 'center',
-    });
-    if (a.maxPoints !== undefined) {
+    if (combinedLetterScoring) {
+      let score = measureCombinedScore(a, spec.pointsRangeFormat, L.bodyPt, m);
+      for (let candidatePt = 20; candidatePt >= L.bodyPt; candidatePt -= 0.5) {
+        const candidate = measureCombinedScore(a, spec.pointsRangeFormat, candidatePt, m);
+        const primaryH = m.lineHeightIn('bodyBold', candidate.primaryPt);
+        const maximumH = candidate.maximumPt
+          ? m.lineHeightIn('bodyBold', candidate.maximumPt)
+          : 0;
+        if (candidate.totalW <= pointsBox.w && Math.max(primaryH, maximumH) <= pointsBox.h) {
+          score = candidate;
+          break;
+        }
+      }
+      const groupX = pointsBox.x + (pointsBox.w - score.totalW) / 2;
+      const primaryH = m.lineHeightIn('bodyBold', score.primaryPt);
+      prims.push({
+        kind: 'text',
+        box: {
+          x: groupX,
+          y: rowY(r) + (L.rowH - primaryH) / 2,
+          w: score.primaryW,
+          h: primaryH,
+        },
+        text: score.primaryText,
+        fontId: 'bodyBold',
+        sizePt: score.primaryPt,
+        color: INK,
+        align: 'left',
+      });
+      if (score.maximumText && score.maximumPt) {
+        const maximumH = m.lineHeightIn('bodyBold', score.maximumPt);
+        prims.push({
+          kind: 'text',
+          box: {
+            x: groupX + score.primaryW + score.gapW,
+            y: rowY(r) + (L.rowH - maximumH) / 2,
+            w: score.maximumW,
+            h: maximumH,
+          },
+          text: score.maximumText,
+          fontId: 'bodyBold',
+          sizePt: score.maximumPt,
+          color: INK,
+          align: 'left',
+        });
+      }
+    } else {
+      const pointsText = pointsLabel(a.points, spec.pointsRangeFormat);
+      const pointsPt = fitSizePt(pointsText, pointsBox.w, pointsBox.h, 'bodyBold', m, 20, L.bodyPt) ?? L.bodyPt;
+      const pointsLineH = m.lineHeightIn('bodyBold', pointsPt);
+      prims.push({
+        kind: 'text',
+        box: {
+          x: pointsBox.x,
+          y: rowY(r) + (L.rowH - pointsLineH) / 2,
+          w: pointsBox.w,
+          h: pointsLineH,
+        },
+        text: pointsText,
+        fontId: 'bodyBold',
+        sizePt: pointsPt,
+        color: INK,
+        align: 'center',
+      });
+    }
+    if (!combinedLetterScoring && a.maxPoints !== undefined) {
       const maxText = String(a.maxPoints);
       const maxBox: Box = {
         x: maxX + CELL_PAD,

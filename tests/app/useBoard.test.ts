@@ -23,4 +23,17 @@ describe('useBoard', () => {
     expect(result.current.errors.length).toBeGreaterThan(0);
     expect(result.current.errors[0]!.message).toContain('at least 2');
   });
+
+  it('attaches solver-driven fit guidance to a Letter board', async () => {
+    const draft = makeDraft({
+      posterSize: '8.5x11',
+      players: ['Jack', 'Bobbie', 'Shasha', 'Hunter', 'SG'],
+      includeRules: false,
+    });
+    const { result } = renderHook(() => useBoard(draft, testMetrics(), 10));
+    await waitFor(() => expect(result.current.status).toBe('ready'), { timeout: 5000 });
+    if (result.current.status !== 'ready') return;
+    expect(result.current.fit?.selectedActivities).toBe(draft.activities.length);
+    expect(result.current.fit?.estimatedMaxActivities).toBeGreaterThanOrEqual(draft.activities.length);
+  });
 });

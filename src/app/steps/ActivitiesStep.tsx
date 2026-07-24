@@ -9,7 +9,9 @@ import {
   type PresetActivity,
 } from '../../content/activities';
 import { activityRelevance, groupActivitiesForOccasion } from '../../content/activityBrowse';
+import type { LetterFit } from '../../engine';
 import { pointsLabel } from '../../models/boardSpec';
+import { shortLetterFitMessage } from '../letterFit';
 
 function activityRow(a: PresetActivity): Draft['activities'][number] {
   return {
@@ -18,7 +20,7 @@ function activityRow(a: PresetActivity): Draft['activities'][number] {
   };
 }
 
-export function ActivitiesStep() {
+export function ActivitiesStep({ fit }: { fit?: LetterFit } = {}) {
   const { draft, patch, setStep } = useWizardStore();
   const [query, setQuery] = useState('');
   const [selectedOnly, setSelectedOnly] = useState(false);
@@ -105,6 +107,7 @@ export function ActivitiesStep() {
         </div>
         <div className="selection-count" role="status" aria-live="polite">
           <strong>{draft.activities.length}</strong><span>selected</span>
+          {fit && <span className="selection-fit">{shortLetterFitMessage(fit)}</span>}
         </div>
       </div>
 

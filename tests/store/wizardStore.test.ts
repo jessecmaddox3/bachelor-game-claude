@@ -85,6 +85,8 @@ describe('wizardStore', () => {
 
     expect(normalized.title).toBe('Legacy board');
     expect(normalized.rulesTitle).toBe('GAME RULES:');
+    expect(normalized.letterHeaderStyle).toBe('large');
+    expect(normalized.includeRules).toBe(true);
     expect(normalized.activities[0]?.uid).toEqual(expect.any(String));
     expect(normalized.posterSize).toBe('60x48');
   });
@@ -98,12 +100,16 @@ describe('wizardStore', () => {
     delete legacy.pointsRangeFormat;
     delete legacy.rulesTitle;
     delete legacy.rulesContent;
+    delete legacy.letterHeaderStyle;
+    delete legacy.includeRules;
     localStorage.setItem('game-board-v5', JSON.stringify({ state: { draft: legacy, step: 1 }, version: 0 }));
     await useWizardStore.persist.rehydrate();
     const draft = useWizardStore.getState().draft;
     expect(draft.pointsRangeFormat).toBe('words');
     expect(draft.rulesTitle).toBe('GAME RULES:');
     expect(draft.rulesContent).toMatch(/HONOR SYSTEM/);
+    expect(draft.letterHeaderStyle).toBe('large');
+    expect(draft.includeRules).toBe(true);
   });
 
   it('persists the complete atomically replaced occasion draft', () => {

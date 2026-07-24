@@ -93,6 +93,22 @@ describe('solveGrid', () => {
     expect(withMax.result.maxPointsColW).toBeGreaterThan(0);
   });
 
+  it('combines capped scoring into the points column on Letter', () => {
+    const letter = solve({
+      posterSize: '8.5x11',
+      players: ['Jack', 'Bobbie', 'Shasha', 'Hunter', 'SG'],
+      activities: Array.from({ length: 10 }, (_, i) => ({
+        name: `Task ${i}`,
+        points: i === 1 ? { min: 1, max: 5 } : 3,
+        ...(i < 2 ? { maxPoints: i === 0 ? 6 : 10 } : {}),
+      })),
+      includeRules: false,
+    });
+    if (!letter.result.feasible) throw new Error('expected feasible');
+    expect(letter.result.maxPointsColW).toBe(0);
+    expect(letter.result.pointsColW).toBeGreaterThan(MIN_COL_W);
+  });
+
   it('counts write-in and honoree bonus rows in the row budget', () => {
     const plain = solve();
     const extra = solve({ writeInRows: 2, honoreeBonusRow: true });

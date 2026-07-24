@@ -1,8 +1,8 @@
 import { boardSpecSchema, type BoardSpec } from '../models/boardSpec';
-import { partitionRegions } from './layout/regions';
 import { solveGrid } from './layout/gridSolver';
+import { planPortrait } from './layout/portraitPlan';
 import { gradeLandscapeRules, gradeLayout, type QualityReport } from './layout/quality';
-import { composeScene, planRules, type RulesPlan } from './scene/compose';
+import { composeScene } from './scene/compose';
 import type { FontMetrics } from './fonts/metrics';
 import type { Scene } from './scene/types';
 import { composeLandscapeBrackets } from './scene/composeLandscapeBrackets';
@@ -32,7 +32,10 @@ export function buildBoard(input: unknown, m: FontMetrics): BuildResult {
         reason: `The Landscape / Brackets template only fits a 60"x48" poster; the selected ${spec.posterSize} size cannot render it. Switch to 60x48.`,
       };
     }
-    const composed = composeLandscapeBrackets(spec, m);
+    const landscapeSpec: BoardSpec = spec.includeRules
+      ? spec
+      : { ...spec, rulesContent: '', rules: [], footnote: undefined };
+    const composed = composeLandscapeBrackets(landscapeSpec, m);
     if (!composed) return { ok: false, reason: 'Some landscape content cannot fit legibly. Shorten long titles, names, activities, or rules.' };
     return {
       ok: true,
@@ -40,24 +43,13 @@ export function buildBoard(input: unknown, m: FontMetrics): BuildResult {
       quality: gradeLandscapeRules(composed.rulesPt),
     };
   }
-  const regions = partitionRegions(spec);
-  let rulesPlan: RulesPlan | undefined;
-  if (regions.rules) {
-    const planned = planRules(spec, regions.rules, m);
-    if (!planned) {
-      const surface = spec.posterSize === '8.5x11' ? `an ${spec.posterSize} letter sheet` : `a ${spec.posterSize} poster`;
-      return {
-        ok: false,
-        reason: `The rules do not fit legibly on ${surface}. Choose a larger size or shorten the rules.`,
-      };
-    }
-    rulesPlan = planned;
-  }
-  const solved = solveGrid(regions.grid, spec, m);
+  const portrait = planPortrait(spec, m);
+  if (!portrait.ok) return { ok: false, reason: portrait.reason };
+  const solved = solveGrid(portrait.regions.grid, spec, m);
   if (!solved.feasible) return { ok: false, reason: solved.reason };
   return {
     ok: true,
-    scene: composeScene(spec, regions, solved, m, rulesPlan),
+    scene: composeScene(spec, portrait.regions, solved, m, portrait.rulesPlan, portrait.compactHeader),
     quality: gradeLayout(solved, spec),
   };
 }

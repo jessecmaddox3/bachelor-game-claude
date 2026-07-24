@@ -11,6 +11,9 @@ const STEPS = ['Setup', 'Activities', 'Design'] as const;
 export function App({ metrics, buffers }: { metrics: FontMetrics; buffers: FontBuffers | null }) {
   const { draft, step, setStep, reset } = useWizardStore();
   const board = useBoard(draft, metrics);
+  const fit = board.status === 'ready' || board.status === 'infeasible'
+    ? board.fit
+    : undefined;
 
   return (
     <div className="shell">
@@ -43,7 +46,7 @@ export function App({ metrics, buffers }: { metrics: FontMetrics; buffers: FontB
       <main className="builder-layout">
         <section className="panel">
           {step === 0 && <SetupStep />}
-          {step === 1 && <ActivitiesStep />}
+          {step === 1 && <ActivitiesStep fit={fit} />}
           {step === 2 && <DesignStep board={board} metrics={metrics} buffers={buffers} />}
         </section>
         <Preview board={board} />
