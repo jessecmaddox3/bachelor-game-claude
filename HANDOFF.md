@@ -1,29 +1,32 @@
 # Handoff
 
-- Original goal: Improve the portrait 8.5 × 11 inch printout after the Camp SheiShei field test, write the formal spec, obtain Claude review, implement it, verify it, and preserve other output formats.
-- Current phase: The Letter print-fit release is implemented, independently reviewed, verified, committed, pushed to source `main` as `bf1f1de`, and live at `https://jessemaddox.com/gameboard`. The isolated site deployment commit is `e742401`.
+- Original goal: Make named boards easy to save and reopen throughout the builder, expose complete activity descriptions, run a quick catalog deduplication pass, preserve existing saved boards, obtain independent Claude review, and publish the finished update to `https://jessemaddox.com/gameboard`.
+- Current phase: Complete, pushed, and live. Source remote `main` is `1316307`. The isolated website deployment commit is `556cdc0`.
 - Done:
-  - Added Large Header and Compact Header choices for portrait Letter, with Large as the backward-compatible default.
-  - Added `Include rules on printout`; hidden rules remain saved and editable. Letter rules now reserve only the measured height needed for readable 8-point text.
-  - Combined Letter points and maximum points into one `POINTS (MAX)` column with inline values such as `3 (6)`. Large portrait and landscape scoring remain unchanged.
-  - Added solver-driven approximate Letter capacity in Activities, Design, and Preview, including actionable over-limit guidance.
-  - Enforced Compact Header and corner-box incompatibility in both UI and engine, with linked assistive explanations.
-  - Claude found one confirmed conservative-capacity edge case. A red-green regression test now proves a currently feasible heterogeneous board is never told to remove activities.
-  - Visual proofs of Compact without rules and Large with rules were rasterized from the real scene engine and inspected.
-  - Formal design: `docs/superpowers/specs/2026-07-23-letter-print-fit-design.md`.
-  - Implementation plan: `docs/superpowers/plans/2026-07-23-letter-print-fit.md`.
-  - Final gate: 281 tests passed, `npx tsc --noEmit` passed, `npm run build` passed, and `git diff --check` passed. The known Vite chunk-size warning remains non-blocking.
-- Pending: No required release work remains.
-- Changed files: Letter model/defaults, portrait planning, dynamic rules, combined scoring, capacity analyzer, board state/UI, CSS, focused engine/store/app tests, formal spec, and implementation plan. See source commit `bf1f1de`.
-- Verify command (how to confirm it works): `npm test -- --run && npx tsc --noEmit && npm run build && git diff --check`.
+  - Added sticky header controls for Save and Boards across Setup, Activities, and Design.
+  - Added active named-board identity plus visible `Saved`, `Unsaved changes`, and compact mobile status.
+  - Added one-click updates for the active board, Save as, newest-first board browsing, unsaved-work confirmation, storage-error recovery, and `Cmd+S` or `Ctrl+S`.
+  - Kept the automatic `game-board-v5` recovery draft separate from explicit `game-board-saves-v1` snapshots.
+  - Removed the old Setup-only save and load section. Preset loading now explains how named and unsaved work will be handled.
+  - Added accessible activity Details controls without shrinking the existing selection target.
+  - Consolidated high-confidence duplicate catalog entries through 44 stable legacy ID aliases. Customized saved activity text and scoring survive migration.
+  - Saved initial informal-game research at `docs/research/2026-07-23-informal-social-games-initial-findings.md`.
+  - Claude reviewed the complete implementation. Confirmed findings around modal behavior, storage work during typing, mobile status, focus restoration, stale overwrite checks, preset dirty state, shortcut edge cases, and alias coverage were fixed with regressions.
+  - Final source gate: 304 tests passed, TypeScript and Vite production build passed, and source `git diff --check` passed.
+  - Deployment was built with `npx vite build --base=/projects/gameboard/`, copied exactly through an isolated site worktree, and pushed without touching the other active website session.
+  - Production verification: `/gameboard`, its CSS, JavaScript, and PDF bundle all return HTTP 200 from Vercel. Live HTML retains `noindex, nofollow`, and the live bundle contains the named-save and Details markers.
+- Pending: No required release work remains. A printable second-sheet Activity Guide and delete or rename controls for saved boards remain possible future features.
+- Changed files: Activity aliases and catalog content; named-save storage and wizard state; header controls and saved-board dialog; activity picker row; Setup and Activities steps; responsive CSS; content, store, and app regression tests; formal spec and implementation plan.
+- Verify command (how to confirm it works): `npm test -- --run && npm run build && git diff --check`. For deployment, run `npx vite build --base=/projects/gameboard/` and compare `dist/` exactly with `projects/gameboard/`.
 - Current risks / known issues:
-  - Capacity is intentionally approximate for unknown future activity wording. The current render verdict remains authoritative.
-  - The in-app browser was unavailable. Engine-generated Letter PNG proofs were inspected instead.
-  - Site-wide link and launch-readiness checks still report unrelated pre-existing failures on remote site `main`; the gameboard artifact passed its scoped checks and exact source-to-deploy comparison.
+  - The built-in browser was unavailable, so no screenshot-based visual sign-off was possible. Responsive behavior is covered by CSS review, build validation, and interaction tests.
+  - Vite still reports the existing non-blocking large-chunk warning.
+  - The isolated website checkout has one unrelated pre-existing Invitational-domain test failure. The gameboard artifact and live asset checks pass.
+  - This session's managed sandbox could not fast-forward the local source `main` checkout. Remote `main` is correctly at `1316307`, while the local `main` checkout may remain stale until a future session fetches and fast-forwards it.
 - Do not repeat (dead ends already tried):
-  - Do not use a separate row-count formula. Capacity must continue through `planPortrait` and `solveGrid`.
-  - Do not combine max points on non-Letter portrait boards.
-  - Do not reduce the 0.5-inch Letter margin.
-  - The first Claude review wrapper returned late but completed successfully; no second review is needed unless implementation changes materially.
-- Suggested next step: Build the next Camp SheiShei board at `https://jessemaddox.com/gameboard` and print a Letter PDF using the new layout controls.
-- Last tool + date: Codex, 2026-07-23.
+  - Do not deploy a normal root-base Vite build. The live route requires `--base=/projects/gameboard/`.
+  - Do not use Vercel CLI or the dirty website worktree. Production deploys from a scoped commit pushed to site `main`.
+  - Do not remove legacy activity aliases when cleaning the public catalog.
+  - Do not combine the automatic recovery draft with named snapshots.
+- Suggested next step: Use the live builder for the kids weekend. If the rules-sheet idea still feels useful after another real printout, specify the optional Activity Guide as the next release.
+- Last tool + date: Codex, 2026-07-24.
