@@ -62,7 +62,15 @@ export function loadSavedBoard(name: string): Draft | undefined {
 }
 
 function comparableDraft(draft: Draft) {
-  const normalized = normalizeDraft(draft);
+  const normalized = normalizeDraft({
+    ...draft,
+    activities: Array.isArray(draft.activities)
+      ? draft.activities.map((activity, index) => ({
+        ...activity,
+        uid: typeof activity.uid === 'string' ? activity.uid : `fingerprint-row-${index}`,
+      }))
+      : [],
+  });
   return {
     ...normalized,
     activities: normalized.activities.map(({ uid: _uid, ...activity }) => activity),

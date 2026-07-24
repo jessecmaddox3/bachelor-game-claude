@@ -75,6 +75,17 @@ describe('SetupStep', () => {
     expect(useWizardStore.getState().draft.libraryOccasion).toBe('beach-trip');
   });
 
+  it('explains that a named board stays saved before loading a preset', async () => {
+    useWizardStore.getState().setActiveSavedBoardName('Camp board');
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    render(<SetupStep />);
+
+    await userEvent.click(screen.getByRole('button', { name: /load preset/i }));
+
+    expect(confirm).toHaveBeenCalledWith(expect.stringMatching(/Camp board.*stay saved/i));
+    expect(useWizardStore.getState().activeSavedBoardName).toBe('Camp board');
+  });
+
   it('shows properly capitalized occasion choices with a little flair', () => {
     render(<SetupStep />);
     expect(screen.getByRole('radio', { name: '🧸 Kids Weekend' })).toBeChecked();
@@ -241,6 +252,16 @@ describe('ActivitiesStep', () => {
     expect(descriptionId).toBeTruthy();
     expect(document.getElementById(descriptionId!)).toHaveTextContent(/toast/i);
     expect(checkbox).not.toBeChecked();
+  });
+
+  it('keeps the points and difficulty columns inside the activity selection target', async () => {
+    useWizardStore.getState().patch({ libraryOccasion: 'general', activities: [] });
+    const { container } = render(<ActivitiesStep />);
+    await userEvent.type(screen.getByLabelText(/search ideas/i), 'Give a Specific Toast');
+    const row = container.querySelector('[data-activity-id="specific-toast"]') as HTMLElement;
+
+    await userEvent.click(row.querySelector('.activity-row-points') as HTMLElement);
+    expect(useWizardStore.getState().draft.activities[0]?.catalogId).toBe('specific-toast');
   });
 
   it('shows eight ideas per category before explicit expansion', async () => {

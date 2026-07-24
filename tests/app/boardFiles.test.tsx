@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { App } from '../../src/app/App';
 import { testMetrics } from '../helpers/loadFonts';
@@ -25,7 +25,7 @@ afterEach(() => {
 describe('named board controls', () => {
   it('saves an unnamed board from the header and then updates it in one click', async () => {
     render(<App metrics={testMetrics()} buffers={null} />);
-    await userEvent.click(screen.getByRole('button', { name: /^save$/i }));
+    await userEvent.click(screen.getByRole('button', { name: /^save (?!as)/i }));
     expect(screen.getByRole('dialog', { name: /saved boards/i })).toBeDefined();
 
     const name = screen.getByLabelText(/save name/i);
@@ -38,7 +38,7 @@ describe('named board controls', () => {
 
     await userEvent.type(screen.getByLabelText(/^subtitle$/i), 'Updated weekend');
     expect(await screen.findByText(/unsaved changes/i)).toBeDefined();
-    await userEvent.click(screen.getByRole('button', { name: /^save$/i }));
+    await userEvent.click(screen.getByRole('button', { name: /^save (?!as)/i }));
     expect(loadSavedBoard('Camp SheiShei')?.subtitle).toBe('Updated weekend');
   });
 
@@ -89,12 +89,89 @@ describe('named board controls', () => {
     });
   });
 
+  it('leaves Cmd+Shift+S and repeated shortcuts to the browser', () => {
+    saveBoard('Shortcut board', defaultDraft());
+    useWizardStore.getState().replaceDraft(defaultDraft(), 'Shortcut board');
+    render(<App metrics={testMetrics()} buffers={null} />);
+
+    const shiftedSave = new KeyboardEvent('keydown', {
+      key: 's',
+      metaKey: true,
+      shiftKey: true,
+      cancelable: true,
+    });
+    const repeatedSave = new KeyboardEvent('keydown', {
+      key: 's',
+      metaKey: true,
+      repeat: true,
+      cancelable: true,
+    });
+    window.dispatchEvent(shiftedSave);
+    window.dispatchEvent(repeatedSave);
+
+    expect(shiftedSave.defaultPrevented).toBe(false);
+    expect(repeatedSave.defaultPrevented).toBe(false);
+  });
+
+  it('does not reread every saved board while the user types', async () => {
+    saveBoard('Typing board', defaultDraft());
+    useWizardStore.getState().replaceDraft(defaultDraft(), 'Typing board');
+    const storageRead = vi.spyOn(localStorage, 'getItem');
+    render(<App metrics={testMetrics()} buffers={null} />);
+    storageRead.mockClear();
+
+    await userEvent.type(screen.getByLabelText(/^subtitle$/i), 'Typing');
+
+    expect(storageRead.mock.calls.filter(([key]) => key === SAVED_BOARDS_KEY)).toHaveLength(0);
+  });
+
+  it('confirms before overwriting a board created after the dialog opened', async () => {
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    render(<App metrics={testMetrics()} buffers={null} />);
+    await userEvent.click(screen.getByRole('button', { name: /^save (?!as)/i }));
+
+    const external = defaultDraft();
+    external.title = 'External version';
+    saveBoard('Race board', external);
+    const name = screen.getByLabelText(/save name/i);
+    await userEvent.clear(name);
+    await userEvent.type(name, 'Race board');
+    await userEvent.click(screen.getByRole('button', { name: /^save as$/i }));
+
+    expect(confirm).toHaveBeenCalledWith('Overwrite this saved board?');
+    expect(loadSavedBoard('Race board')?.title).toBe('External version');
+    expect(screen.getByRole('dialog', { name: /saved boards/i })).toBeDefined();
+  });
+
+  it('closes from the modal backdrop and restores focus to Boards', async () => {
+    render(<App metrics={testMetrics()} buffers={null} />);
+    const boards = screen.getByRole('button', { name: /^boards$/i });
+    await userEvent.click(boards);
+    const dialog = screen.getByRole('dialog', { name: /saved boards/i });
+    vi.spyOn(dialog, 'getBoundingClientRect').mockReturnValue({
+      left: 100,
+      right: 500,
+      top: 100,
+      bottom: 500,
+      width: 400,
+      height: 400,
+      x: 100,
+      y: 100,
+      toJSON: () => ({}),
+    });
+
+    fireEvent.click(dialog, { clientX: 50, clientY: 50 });
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(document.activeElement).toBe(boards);
+  });
+
   it('reports a storage failure without claiming the board was saved', async () => {
     vi.spyOn(localStorage, 'setItem').mockImplementation(() => {
       throw new DOMException('Quota exceeded', 'QuotaExceededError');
     });
     render(<App metrics={testMetrics()} buffers={null} />);
-    await userEvent.click(screen.getByRole('button', { name: /^save$/i }));
+    await userEvent.click(screen.getByRole('button', { name: /^save (?!as)/i }));
     const name = screen.getByLabelText(/save name/i);
     await userEvent.clear(name);
     await userEvent.type(name, 'Broken save');
@@ -102,5 +179,19 @@ describe('named board controls', () => {
 
     expect(screen.getByRole('alert')).toHaveTextContent(/could not save/i);
     expect(useWizardStore.getState().activeSavedBoardName).toBeNull();
+  });
+
+  it('lets the user dismiss a one-click save error', async () => {
+    saveBoard('Active board', defaultDraft());
+    useWizardStore.getState().replaceDraft(defaultDraft(), 'Active board');
+    vi.spyOn(localStorage, 'setItem').mockImplementation(() => {
+      throw new DOMException('Quota exceeded', 'QuotaExceededError');
+    });
+    render(<App metrics={testMetrics()} buffers={null} />);
+
+    await userEvent.click(screen.getByRole('button', { name: /^save (?!as)/i }));
+    expect(screen.getByRole('alert')).toHaveTextContent(/could not save/i);
+    await userEvent.click(screen.getByRole('button', { name: /dismiss save error/i }));
+    expect(screen.queryByRole('alert')).toBeNull();
   });
 });

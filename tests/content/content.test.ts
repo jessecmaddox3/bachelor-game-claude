@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { createHash } from 'node:crypto';
-import { ACTIVITY_LIBRARY, ACTIVITY_CATEGORIES, ACTIVITY_OCCASIONS, RECOMMENDED_ACTIVITY_IDS, STARTER_RULES, STARTER_RULES_CONTENT, STARTER_FOOTNOTE } from '../../src/content/activities';
+import { ACTIVITY_LIBRARY, ACTIVITY_CATEGORIES, ACTIVITY_OCCASIONS, CONSOLIDATED_SEED_IDS, RECOMMENDED_ACTIVITY_IDS, STARTER_RULES, STARTER_RULES_CONTENT, STARTER_FOOTNOTE } from '../../src/content/activities';
 import { ACTIVITY_ID_ALIASES, canonicalActivityId } from '../../src/content/activityAliases';
 import {
   ACTIVITY_CATEGORY_ORDER,
@@ -146,6 +146,10 @@ describe('activity library', () => {
     }
     expect(canonicalActivityId('custom-catalog-id')).toBe('custom-catalog-id');
     expect(canonicalActivityId(undefined)).toBeUndefined();
+  });
+
+  it('requires a migration alias for every consolidated seed id', () => {
+    expect([...CONSOLIDATED_SEED_IDS].sort()).toEqual(Object.keys(ACTIVITY_ID_ALIASES).sort());
   });
 
   it('keeps the intentionally distinct dessert variants clearly named', () => {

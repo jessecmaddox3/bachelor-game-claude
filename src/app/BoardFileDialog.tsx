@@ -63,22 +63,25 @@ export function BoardFileDialog({
   };
 
   return (
-    <div
-      className="board-file-backdrop"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget) onClose();
+    <dialog
+      ref={dialog}
+      className="board-file-dialog"
+      aria-modal="true"
+      aria-labelledby="saved-boards-heading"
+      onClick={(event) => {
+        if (event.target !== event.currentTarget) return;
+        const bounds = event.currentTarget.getBoundingClientRect();
+        const outsideDialog = event.clientX < bounds.left
+          || event.clientX > bounds.right
+          || event.clientY < bounds.top
+          || event.clientY > bounds.bottom;
+        if (outsideDialog) onClose();
+      }}
+      onCancel={(event) => {
+        event.preventDefault();
+        onClose();
       }}
     >
-      <dialog
-        ref={dialog}
-        className="board-file-dialog"
-        aria-modal="true"
-        aria-labelledby="saved-boards-heading"
-        onCancel={(event) => {
-          event.preventDefault();
-          onClose();
-        }}
-      >
         <div className="board-file-dialog-heading">
           <div>
             <span className="eyebrow">Your browser</span>
@@ -142,7 +145,6 @@ export function BoardFileDialog({
         <p className="board-file-storage-note">
           Named boards are stored only in this browser. Your current working draft is also recovered automatically.
         </p>
-      </dialog>
-    </div>
+    </dialog>
   );
 }

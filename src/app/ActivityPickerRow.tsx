@@ -37,13 +37,13 @@ export function ActivityPickerRow({
           <strong>{item.name}</strong>
           <span id={descriptionId}>{item.instruction}</span>
         </span>
+        <span className="activity-row-points">
+          {pointsLabel(item.points)} {typeof item.points === 'number' && item.points === 1 ? 'pt' : 'pts'}
+        </span>
+        <span className={`activity-row-level relevance-${relevance}`}>
+          {relevance === 0 ? 'Top match' : item.difficulty}
+        </span>
       </label>
-      <span className="activity-row-points">
-        {pointsLabel(item.points)} {typeof item.points === 'number' && item.points === 1 ? 'pt' : 'pts'}
-      </span>
-      <span className={`activity-row-level relevance-${relevance}`}>
-        {relevance === 0 ? 'Top match' : item.difficulty}
-      </span>
       <button
         className="activity-row-details"
         type="button"

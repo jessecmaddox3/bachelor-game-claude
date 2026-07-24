@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  draftFingerprint,
   listSavedBoards,
   loadSavedBoard,
   saveBoard,
@@ -28,6 +29,7 @@ export function BoardFileControls() {
   const saveButton = useRef<HTMLButtonElement>(null);
   const boardsButton = useRef<HTMLButtonElement>(null);
   const dialogOpener = useRef<HTMLButtonElement | null>(null);
+  const previousDialogFocus = useRef<DialogFocus | null>(null);
 
   const refreshSnapshots = useCallback(() => {
     const next = listSavedBoards();
@@ -35,11 +37,19 @@ export function BoardFileControls() {
     return next;
   }, []);
 
-  const activeSnapshotExists = activeSavedBoardName !== null
-    && snapshots.some((snapshot) => snapshot.name === activeSavedBoardName);
-  const isSaved = activeSnapshotExists
-    && activeSavedBoardName !== null
-    && savedBoardMatchesDraft(activeSavedBoardName, draft);
+  const activeSnapshot = useMemo(
+    () => activeSavedBoardName === null
+      ? undefined
+      : snapshots.find((snapshot) => snapshot.name === activeSavedBoardName),
+    [activeSavedBoardName, snapshots],
+  );
+  const currentFingerprint = useMemo(() => draftFingerprint(draft), [draft]);
+  const activeFingerprint = useMemo(
+    () => activeSnapshot === undefined ? undefined : draftFingerprint(activeSnapshot.draft),
+    [activeSnapshot],
+  );
+  const activeSnapshotExists = activeSnapshot !== undefined;
+  const isSaved = activeSnapshotExists && activeFingerprint === currentFingerprint;
   const status = !activeSnapshotExists
     ? 'Not saved yet'
     : isSaved
@@ -56,7 +66,6 @@ export function BoardFileControls() {
   const closeDialog = useCallback(() => {
     setDialogFocus(null);
     setError('');
-    queueMicrotask(() => dialogOpener.current?.focus());
   }, []);
 
   const saveAs = useCallback((requestedName: string): boolean => {
@@ -66,7 +75,8 @@ export function BoardFileControls() {
       return false;
     }
 
-    const wouldReplaceAnother = snapshots.some((snapshot) => snapshot.name === name)
+    const latestSnapshots = listSavedBoards();
+    const wouldReplaceAnother = latestSnapshots.some((snapshot) => snapshot.name === name)
       && name !== activeSavedBoardName;
     if (wouldReplaceAnother && !window.confirm('Overwrite this saved board?')) return false;
 
@@ -77,7 +87,6 @@ export function BoardFileControls() {
       setAnnouncement(`Saved ${name}.`);
       setError('');
       setDialogFocus(null);
-      queueMicrotask(() => dialogOpener.current?.focus());
       return true;
     } catch {
       setError(SAVE_ERROR);
@@ -88,7 +97,6 @@ export function BoardFileControls() {
     draft,
     refreshSnapshots,
     setActiveSavedBoardName,
-    snapshots,
   ]);
 
   const saveActive = useCallback(() => {
@@ -139,8 +147,13 @@ export function BoardFileControls() {
     setAnnouncement(`Opened ${name}.`);
     setDialogFocus(null);
     setError('');
-    queueMicrotask(() => dialogOpener.current?.focus());
   }, [activeSavedBoardName, draft, refreshSnapshots, replaceDraft]);
+
+  useEffect(() => {
+    const wasOpen = previousDialogFocus.current !== null;
+    previousDialogFocus.current = dialogFocus;
+    if (wasOpen && dialogFocus === null) dialogOpener.current?.focus();
+  }, [dialogFocus]);
 
   useEffect(() => {
     const handleKeyboardSave = (event: KeyboardEvent) => {
@@ -148,6 +161,9 @@ export function BoardFileControls() {
         event.key.toLowerCase() !== 's'
         || (!event.metaKey && !event.ctrlKey)
         || event.altKey
+        || event.shiftKey
+        || event.repeat
+        || dialogFocus !== null
       ) return;
 
       event.preventDefault();
@@ -156,15 +172,35 @@ export function BoardFileControls() {
 
     window.addEventListener('keydown', handleKeyboardSave);
     return () => window.removeEventListener('keydown', handleKeyboardSave);
-  }, [saveActive]);
+  }, [dialogFocus, saveActive]);
+
+  const compactStatus = status === 'Unsaved changes'
+    ? 'Unsaved'
+    : status === 'Not saved yet'
+      ? 'New'
+      : status;
+  const saveAccessibleName = activeSnapshotExists && activeSavedBoardName !== null
+    ? `Save ${activeSavedBoardName}, ${status}`
+    : `Save board, ${status}`;
 
   return (
     <div className="board-file-controls">
       <span className="board-file-status" aria-live="polite">
         {activeSnapshotExists && <strong title={activeSavedBoardName ?? undefined}>{activeSavedBoardName}</strong>}
-        <span className={status === 'Unsaved changes' ? 'unsaved' : undefined}>{status}</span>
+        <span
+          className={`board-file-status-long${status === 'Unsaved changes' ? ' unsaved' : ''}`}
+          data-compact-status={compactStatus}
+        >
+          {status}
+        </span>
       </span>
-      <button ref={saveButton} className="primary header-file-button" type="button" onClick={saveActive}>
+      <button
+        ref={saveButton}
+        className="primary header-file-button"
+        type="button"
+        aria-label={saveAccessibleName}
+        onClick={saveActive}
+      >
         Save
       </button>
       <button
@@ -175,7 +211,12 @@ export function BoardFileControls() {
       >
         Boards
       </button>
-      {error && dialogFocus === null && <span className="header-save-error" role="alert">{error}</span>}
+      {error && dialogFocus === null && (
+        <span className="header-save-error" role="alert">
+          <span>{error}</span>
+          <button type="button" aria-label="Dismiss save error" onClick={() => setError('')}>×</button>
+        </span>
+      )}
       <span className="sr-only" aria-live="polite">{announcement}</span>
 
       {dialogFocus !== null && (

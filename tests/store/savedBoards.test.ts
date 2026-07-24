@@ -75,6 +75,33 @@ describe('saved boards', () => {
     expect(loaded?.posterSize).toBe('60x48');
   });
 
+  it('migrates a legacy catalog id through the named-board loading boundary', () => {
+    const legacy = defaultDraft();
+    legacy.activities = [{
+      uid: 'legacy-row',
+      catalogId: 'fam-taste-test',
+      name: 'Customized family taste test',
+      points: 7,
+      maxPoints: 14,
+      bonus: true,
+    }];
+    localStorage.setItem(SAVED_BOARDS_KEY, JSON.stringify([{
+      name: 'Legacy aliases',
+      savedAt: '2026-07-22T14:00:00.000Z',
+      schemaVersion: 0,
+      draft: legacy,
+    }]));
+
+    expect(loadSavedBoard('Legacy aliases')?.activities[0]).toEqual({
+      uid: 'legacy-row',
+      catalogId: 'blind-snack-rank',
+      name: 'Customized family taste test',
+      points: 7,
+      maxPoints: 14,
+      bonus: true,
+    });
+  });
+
   it('treats malformed saved JSON as an empty list', () => {
     localStorage.setItem(SAVED_BOARDS_KEY, '{not valid JSON');
 
@@ -113,6 +140,18 @@ describe('saved boards', () => {
 
     current.activities[0]!.points = 7;
     expect(savedBoardMatchesDraft('Weekend', current)).toBe(false);
+  });
+
+  it('fingerprints legacy rows without generating editor identities', () => {
+    const legacy = {
+      ...defaultDraft(),
+      activities: [{ name: 'Legacy activity', points: 1, bonus: false }],
+    } as Parameters<typeof draftFingerprint>[0];
+    const randomUuid = vi.spyOn(crypto, 'randomUUID');
+
+    draftFingerprint(legacy);
+
+    expect(randomUuid).not.toHaveBeenCalled();
   });
 
   it('detects changes in an unnamed working draft', () => {

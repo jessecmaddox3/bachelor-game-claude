@@ -55,7 +55,7 @@ const a = (
   options: Pick<PresetActivity, 'maxPoints' | 'adultOnly' | 'primaryOccasion' | 'browseTags'> = {},
 ): PresetActivity => ({ id, name, instruction, points, category, occasions, difficulty, formats: ['board', 'individual-lob'], ...options });
 
-const CONSOLIDATED_SEED_IDS = new Set([
+export const CONSOLIDATED_SEED_IDS: ReadonlySet<string> = new Set([
   'bch-cornhole-champ', 'bte-cornhole-win', 'fri-cornhole-champ', 'gen-cornhole-score',
   'bch-sunrise-photo', 'fri-sunrise-watch',
   'fam-taste-test', 'ann-blind-taste', 'fri-blind-taste', 'gen-taste-mystery',

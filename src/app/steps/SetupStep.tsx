@@ -2,7 +2,8 @@ import { useRef, useState } from 'react';
 import { useWizardStore } from '../../store/wizardStore';
 import { ACTIVITY_OCCASIONS, ACTIVITY_OCCASION_LABELS, type ActivityOccasion } from '../../content/activities';
 import { OCCASION_PACKS, occasionById } from '../../content/occasions';
-import { defaultDraft, sortParticipantNames } from '../../store/toBoardSpec';
+import { sortParticipantNames } from '../../store/toBoardSpec';
+import { savedBoardMatchesDraft, workingDraftHasChanges } from '../../store/savedBoards';
 
 // Obviously-example (never personal) titles so the placeholder matches the
 // chosen occasion instead of assuming a specific person's bachelor weekend.
@@ -26,7 +27,7 @@ function playerNames(value: string): string[] {
 }
 
 export function SetupStep() {
-  const { draft, patch, replaceDraft, setStep } = useWizardStore();
+  const { draft, activeSavedBoardName, patch, replaceDraft, setStep } = useWizardStore();
   const [newPlayer, setNewPlayer] = useState('');
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editingName, setEditingName] = useState('');
@@ -60,8 +61,15 @@ export function SetupStep() {
   const loadPreset = () => {
     const preset = occasionById(presetId);
     if (!preset) return;
-    const hasWork = JSON.stringify(draft) !== JSON.stringify(defaultDraft());
-    if (hasWork && !window.confirm('Load this preset? It replaces your current board.')) return;
+    const hasWork = activeSavedBoardName !== null || workingDraftHasChanges(draft);
+    const activeHasChanges = activeSavedBoardName !== null
+      && !savedBoardMatchesDraft(activeSavedBoardName, draft);
+    const confirmation = activeSavedBoardName === null
+      ? 'Load this preset? It replaces your current board.'
+      : activeHasChanges
+        ? `Load this preset? Unsaved changes to "${activeSavedBoardName}" will be replaced. "${activeSavedBoardName}" will stay saved at its last saved version.`
+        : `Load this preset? "${activeSavedBoardName}" will stay saved, and the preset will open as a new unnamed board.`;
+    if (hasWork && !window.confirm(confirmation)) return;
     replaceDraft(preset.createDraft());
     setEditingIndex(null);
     setNewPlayer('');
