@@ -1,7 +1,7 @@
 # Handoff
 
 - Original goal: Improve the portrait 8.5 × 11 inch printout after the Camp SheiShei field test, write the formal spec, obtain Claude review, implement it, verify it, and preserve other output formats.
-- Current phase: The Letter print-fit release is implemented, independently reviewed, verified, committed, and pushed to source `main` as `bf1f1de`. Production artifact deployment is pending because `/Users/jesse/claude/jessemaddox.com` has an active Codex session and unrelated uncommitted homepage work.
+- Current phase: The Letter print-fit release is implemented, independently reviewed, verified, committed, pushed to source `main` as `bf1f1de`, and live at `https://jessemaddox.com/gameboard`. The isolated site deployment commit is `e742401`.
 - Done:
   - Added Large Header and Compact Header choices for portrait Letter, with Large as the backward-compatible default.
   - Added `Include rules on printout`; hidden rules remain saved and editable. Letter rules now reserve only the measured height needed for readable 8-point text.
@@ -13,19 +13,17 @@
   - Formal design: `docs/superpowers/specs/2026-07-23-letter-print-fit-design.md`.
   - Implementation plan: `docs/superpowers/plans/2026-07-23-letter-print-fit.md`.
   - Final gate: 281 tests passed, `npx tsc --noEmit` passed, `npm run build` passed, and `git diff --check` passed. The known Vite chunk-size warning remains non-blocking.
-- Pending:
-  - Deploy the built artifact to `jessemaddox.com/gameboard` once the active site-repo writer is finished.
-  - Build with `npx vite build --base=/projects/gameboard/`, copy only `dist/` into the site repo's `projects/gameboard/`, stage only that path, commit, push, and verify the live bundle.
+- Pending: No required release work remains.
 - Changed files: Letter model/defaults, portrait planning, dynamic rules, combined scoring, capacity analyzer, board state/UI, CSS, focused engine/store/app tests, formal spec, and implementation plan. See source commit `bf1f1de`.
 - Verify command (how to confirm it works): `npm test -- --run && npx tsc --noEmit && npm run build && git diff --check`.
 - Current risks / known issues:
   - Capacity is intentionally approximate for unknown future activity wording. The current render verdict remains authoritative.
   - The in-app browser was unavailable. Engine-generated Letter PNG proofs were inspected instead.
-  - Do not deploy through the currently dirty site working tree or use Vercel CLI.
+  - Site-wide link and launch-readiness checks still report unrelated pre-existing failures on remote site `main`; the gameboard artifact passed its scoped checks and exact source-to-deploy comparison.
 - Do not repeat (dead ends already tried):
   - Do not use a separate row-count formula. Capacity must continue through `planPortrait` and `solveGrid`.
   - Do not combine max points on non-Letter portrait boards.
   - Do not reduce the 0.5-inch Letter margin.
   - The first Claude review wrapper returned late but completed successfully; no second review is needed unless implementation changes materially.
-- Suggested next step: After the active `jessemaddox.com` session commits or stops, deploy source commit `bf1f1de` using an isolated, path-scoped site commit and verify `Compact Header`, `Include rules on printout`, fit guidance, and `noindex, nofollow` in production.
+- Suggested next step: Build the next Camp SheiShei board at `https://jessemaddox.com/gameboard` and print a Letter PDF using the new layout controls.
 - Last tool + date: Codex, 2026-07-23.
