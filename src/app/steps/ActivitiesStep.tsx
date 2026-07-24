@@ -11,6 +11,7 @@ import {
 import { activityRelevance, groupActivitiesForOccasion } from '../../content/activityBrowse';
 import type { LetterFit } from '../../engine';
 import { pointsLabel } from '../../models/boardSpec';
+import { ActivityPickerRow } from '../ActivityPickerRow';
 import { shortLetterFitMessage } from '../letterFit';
 
 function activityRow(a: PresetActivity): Draft['activities'][number] {
@@ -209,21 +210,14 @@ export function ActivitiesStep({ fit }: { fit?: LetterFit } = {}) {
                   const checked = isSelected(item);
                   const relevance = activityRelevance(item, draft.libraryOccasion);
                   return (
-                    <label className={checked ? 'activity-row selected' : 'activity-row'} data-activity-id={item.id} key={item.id}>
-                      <input
-                        type="checkbox"
-                        aria-label={`${checked ? 'Remove' : 'Add'} ${item.name}`}
-                        checked={checked}
-                        disabled={!checked && draft.activities.length >= 80}
-                        onChange={() => toggle(item)}
-                      />
-                      <span className="activity-row-copy">
-                        <strong>{item.name}</strong>
-                        <span>{item.instruction}</span>
-                      </span>
-                      <span className="activity-row-points">{pointsLabel(item.points)} {typeof item.points === 'number' && item.points === 1 ? 'pt' : 'pts'}</span>
-                      <span className={`activity-row-level relevance-${relevance}`}>{relevance === 0 ? 'Top match' : item.difficulty}</span>
-                    </label>
+                    <ActivityPickerRow
+                      key={item.id}
+                      item={item}
+                      checked={checked}
+                      disabled={!checked && draft.activities.length >= 80}
+                      relevance={relevance}
+                      onToggle={() => toggle(item)}
+                    />
                   );
                 })}
               </div>

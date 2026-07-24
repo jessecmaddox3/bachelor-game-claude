@@ -512,18 +512,22 @@ button.ghost:hover { color: var(--c-navy); background: var(--c-card); border-col
 .activity-group-heading h3 { margin: 0; color: var(--c-navy-deep); font-family: var(--font-display); font-size: 14px; }
 .activity-group-heading > span { color: var(--c-muted); font-size: 10px; font-weight: 750; white-space: nowrap; }
 .activity-row-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.activity-row { display: grid; grid-template-columns: 20px minmax(0, 1fr) 42px auto; align-items: center; gap: 8px; min-height: 50px; padding: 7px 10px; color: var(--c-text); background: var(--c-white); border-right: 1px solid var(--c-border-soft); border-bottom: 1px solid var(--c-border-soft); cursor: pointer; transition: background 120ms ease, box-shadow 120ms ease; }
+.activity-row { display: grid; grid-template-columns: 20px minmax(0, 1fr) 42px auto auto; align-items: center; gap: 8px; min-height: 50px; padding: 7px 10px; color: var(--c-text); background: var(--c-white); border-right: 1px solid var(--c-border-soft); border-bottom: 1px solid var(--c-border-soft); transition: background 120ms ease, box-shadow 120ms ease; }
 .activity-row:nth-child(even) { border-right: 0; }
 .activity-row:last-child, .activity-row:nth-last-child(2):nth-child(odd) { border-bottom: 0; }
 .activity-row:hover { background: var(--c-surface); }
 .activity-row.selected { background: var(--c-wash); box-shadow: inset 3px 0 0 var(--c-primary-deep); }
+.activity-row-select { display: contents; cursor: pointer; }
 .activity-row input { width: 17px; height: 17px; margin: 0; accent-color: var(--c-primary-deep); }
 .activity-row-copy { display: grid; min-width: 0; }
 .activity-row-copy strong { overflow: hidden; color: var(--c-navy-deep); font-family: var(--font-display); font-size: 12px; line-height: 1.3; text-overflow: ellipsis; white-space: nowrap; }
 .activity-row-copy > span { overflow: hidden; color: var(--c-muted); font-size: 10px; line-height: 1.35; text-overflow: ellipsis; white-space: nowrap; }
+.activity-row.expanded .activity-row-copy > span { overflow: visible; text-overflow: clip; white-space: normal; }
 .activity-row-points { color: var(--c-navy); font-size: 10px; font-weight: 850; text-align: right; }
 .activity-row-level { padding: 3px 5px; color: var(--c-muted); background: var(--c-card); border-radius: 4px; font-size: 8px; font-weight: 850; letter-spacing: .045em; text-align: center; text-transform: uppercase; white-space: nowrap; }
 .activity-row-level.relevance-0 { color: var(--c-white); background: var(--c-primary-deep); }
+.activity-row-details { min-height: 31px; padding: 5px 6px; color: var(--c-primary-deep); background: transparent; border: 1px solid var(--c-border); border-radius: 7px; cursor: pointer; font-size: 9px; font-weight: 800; }
+.activity-row-details:hover { color: var(--c-white); background: var(--c-primary-deep); border-color: var(--c-primary-deep); }
 .show-more { width: 100%; min-height: 38px; color: var(--c-primary-deep); background: var(--c-surface); border: 0; border-top: 1px solid var(--c-border-soft); cursor: pointer; font-size: 11px; font-weight: 850; }
 .show-more:hover { background: var(--c-wash); }
 .empty-state { padding: 28px; color: var(--c-muted); border: 1px dashed var(--c-border); border-radius: var(--radius-card); text-align: center; }
@@ -643,11 +647,13 @@ table.activities input:not([type='checkbox']) { width: 100%; min-width: 78px; mi
   .custom-idea-heading, .custom-name-field { grid-column: 1 / -1; }
   .custom-idea-form button { width: 100%; }
   .activity-row-list { grid-template-columns: 1fr; }
-  .activity-row { grid-template-columns: 20px minmax(0, 1fr) 44px; gap: 7px; min-height: 58px; padding: 8px 9px; border-right: 0; }
+  .activity-row { grid-template-columns: 20px minmax(0, 1fr) 44px auto; gap: 7px; min-height: 58px; padding: 8px 9px; border-right: 0; }
   .activity-row:nth-last-child(2):nth-child(odd) { border-bottom: 1px solid var(--c-border-soft); }
   .rules-toolbar span { display: none; }
   .activity-row-copy > span { display: -webkit-box; overflow: hidden; white-space: normal; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+  .activity-row.expanded .activity-row-copy > span { display: block; overflow: visible; -webkit-line-clamp: initial; }
   .activity-row-level { display: none; }
+  .activity-row-details { min-height: 38px; }
   .step-footer { align-items: stretch; flex-direction: column-reverse; }
   .step-footer > span { display: none; }
   .step-footer button { width: 100%; }

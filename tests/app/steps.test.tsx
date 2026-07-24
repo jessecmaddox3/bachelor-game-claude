@@ -150,7 +150,7 @@ describe('ActivitiesStep', () => {
     useWizardStore.getState().patch({ activities: [], libraryOccasion: 'general' });
     render(<ActivitiesStep />);
     const before = useWizardStore.getState().draft.activities.length;
-    await userEvent.click(screen.getByLabelText(/give a specific toast/i));
+    await userEvent.click(screen.getByRole('checkbox', { name: /add give a specific toast/i }));
     expect(useWizardStore.getState().draft.activities.length).toBe(before + 1);
     expect(useWizardStore.getState().draft.activities[0]?.catalogId).toBe('specific-toast');
   });
@@ -218,6 +218,29 @@ describe('ActivitiesStep', () => {
     render(<ActivitiesStep />);
     await userEvent.type(screen.getByLabelText(/search ideas/i), 'Let a Kid Teach the Game');
     expect(screen.getByRole('checkbox', { name: /add let a kid teach the game/i })).toBeDefined();
+  });
+
+  it('expands a catalog description without selecting the activity', async () => {
+    useWizardStore.getState().patch({ libraryOccasion: 'general', activities: [] });
+    render(<ActivitiesStep />);
+    await userEvent.type(screen.getByLabelText(/search ideas/i), 'Give a Specific Toast');
+
+    const checkbox = screen.getByRole('checkbox', { name: /add give a specific toast/i });
+    const details = screen.getByRole('button', { name: /show details for give a specific toast/i });
+    const row = details.closest('.activity-row');
+    expect(details).toHaveAttribute('aria-expanded', 'false');
+    expect(row).not.toHaveClass('expanded');
+
+    await userEvent.click(details);
+
+    expect(details).toHaveAttribute('aria-expanded', 'true');
+    expect(details).toHaveAccessibleName(/hide details for give a specific toast/i);
+    expect(row).toHaveClass('expanded');
+    expect(useWizardStore.getState().draft.activities).toEqual([]);
+    const descriptionId = details.getAttribute('aria-controls');
+    expect(descriptionId).toBeTruthy();
+    expect(document.getElementById(descriptionId!)).toHaveTextContent(/toast/i);
+    expect(checkbox).not.toBeChecked();
   });
 
   it('shows eight ideas per category before explicit expansion', async () => {
