@@ -1,32 +1,33 @@
 # Handoff
 
-- Original goal: Make named boards easy to save and reopen throughout the builder, expose complete activity descriptions, run a quick catalog deduplication pass, preserve existing saved boards, obtain independent Claude review, and publish the finished update to `https://jessemaddox.com/gameboard`.
-- Current phase: Complete, pushed, and live. Source remote `main` is `1316307`. The isolated website deployment commit is `556cdc0`.
+- Original goal: Add Jesse's complete original bachelor-party board as a protected built-in choice named **Jesse Maddox Bachelor 2017**, relocate Save and Boards to a prominent toolbar above the workspace, verify the result independently, and publish it to `https://jessemaddox.com/gameboard`.
+- Current phase: Complete, pushed, deployed, and verified live. Feature source is `a17b84a`; website deployment is `1a18fda`.
 - Done:
-  - Added sticky header controls for Save and Boards across Setup, Activities, and Design.
-  - Added active named-board identity plus visible `Saved`, `Unsaved changes`, and compact mobile status.
-  - Added one-click updates for the active board, Save as, newest-first board browsing, unsaved-work confirmation, storage-error recovery, and `Cmd+S` or `Ctrl+S`.
-  - Kept the automatic `game-board-v5` recovery draft separate from explicit `game-board-saves-v1` snapshots.
-  - Removed the old Setup-only save and load section. Preset loading now explains how named and unsaved work will be handled.
-  - Added accessible activity Details controls without shrinking the existing selection target.
-  - Consolidated high-confidence duplicate catalog entries through 44 stable legacy ID aliases. Customized saved activity text and scoring survive migration.
-  - Saved initial informal-game research at `docs/research/2026-07-23-informal-social-games-initial-findings.md`.
-  - Claude reviewed the complete implementation. Confirmed findings around modal behavior, storage work during typing, mobile status, focus restoration, stale overwrite checks, preset dirty state, shortcut edge cases, and alias coverage were fixed with regressions.
-  - Final source gate: 304 tests passed, TypeScript and Vite production build passed, and source `git diff --check` passed.
-  - Deployment was built with `npx vite build --base=/projects/gameboard/`, copied exactly through an isolated site worktree, and pushed without touching the other active website session.
-  - Production verification: `/gameboard`, its CSS, JavaScript, and PDF bundle all return HTTP 200 from Vercel. Live HTML retains `noindex, nofollow`, and the live bundle contains the named-save and Details markers.
-- Pending: No required release work remains. A printable second-sheet Activity Guide and delete or rename controls for saved boards remain possible future features.
-- Changed files: Activity aliases and catalog content; named-save storage and wizard state; header controls and saved-board dialog; activity picker row; Setup and Activities steps; responsive CSS; content, store, and app regression tests; formal spec and implementation plan.
-- Verify command (how to confirm it works): `npm test -- --run && npm run build && git diff --check`. For deployment, run `npx vite build --base=/projects/gameboard/` and compare `dist/` exactly with `projects/gameboard/`.
+  - Added **Jesse Maddox Bachelor 2017** to a new Built-in boards section in the Boards dialog.
+  - Kept the occasion catalog as the only source for the template's name, description, and fresh draft factory.
+  - Opening the built-in preserves the current wizard step, clears named-save association, confirms before replacing unsaved work, and never writes a named snapshot.
+  - The first Save after opening the built-in uses Save as, so the template cannot be overwritten.
+  - Moved save status, Save, Boards, and Start over into a full-width board toolbar directly above the editor and preview.
+  - On desktop, the existing internally scrolling workspace keeps the toolbar visible. At tablet and phone widths, the taller application header scrolls away and the board toolbar sticks to the top.
+  - Kept built-in boards visually first while focusing the current browser save when the dialog opens, avoiding accidental replacement from an immediate Enter keypress.
+  - Renamed the dialog to Boards, distinguished the built-in Open action for assistive technology, and visually separated Start over.
+  - Claude completed a read-only review. Confirmed focus, mobile persistence, direct protection-test, accessible-name, and action-separation findings were fixed. The suggestion to confirm when replacing a clean saved board was not adopted because the approved spec confirms only for unsaved work and the saved snapshot remains available.
+  - Final source gate: 309 tests passed, TypeScript passed, Vite production build passed, and source `git diff --check` passed.
+  - Deployment was rebuilt with `npx vite build --base=/projects/gameboard/`, copied exactly into an isolated website worktree, committed as `1a18fda`, and pushed without touching the other active website session.
+  - Production verification: `/gameboard`, its CSS, JavaScript, and PDF bundle return HTTP 200 from Vercel. Live HTML retains `noindex, nofollow`, and the live application bundle contains the new feature markers.
+- Pending: No required work remains. A printable second-sheet Activity Guide remains a possible future feature.
+- Changed files: Occasion metadata; built-in board dialog and open flow; application shell and responsive toolbar styles; board-file and catalog tests; design spec and implementation plan.
+- Verify command: `npm test -- --run`, then `npm run build`, then `git diff --check`. For deployment, run `npx vite build --base=/projects/gameboard/` and compare `dist/` exactly with `projects/gameboard/`.
 - Current risks / known issues:
-  - The built-in browser was unavailable, so no screenshot-based visual sign-off was possible. Responsive behavior is covered by CSS review, build validation, and interaction tests.
-  - Vite still reports the existing non-blocking large-chunk warning.
-  - The isolated website checkout has one unrelated pre-existing Invitational-domain test failure. The gameboard artifact and live asset checks pass.
-  - This session's managed sandbox could not fast-forward the local source `main` checkout. Remote `main` is correctly at `1316307`, while the local `main` checkout may remain stale until a future session fetches and fast-forwards it.
-- Do not repeat (dead ends already tried):
+  - The in-app browser was unavailable, so visual validation used DOM tests, responsive CSS review, build inspection, and live asset checks rather than screenshots.
+  - Vite retains its existing non-blocking large-chunk warning.
+  - The website's global link checker still reports unrelated pre-existing preview, Spoiler Alert, and Pizza links. It reports no broken path inside `projects/gameboard/`.
+  - `git diff --check` flags a generated minified JavaScript line in the deployment artifact. The source tree is clean, and the deployed artifact matches Vite's output exactly.
+  - The managed sandbox may prevent local remote-tracking refs from updating after successful pushes. Direct remote checks confirmed source `main` at `a17b84a` before this handoff-only commit and website `main` at `1a18fda`.
+- Do not repeat:
   - Do not deploy a normal root-base Vite build. The live route requires `--base=/projects/gameboard/`.
-  - Do not use Vercel CLI or the dirty website worktree. Production deploys from a scoped commit pushed to site `main`.
-  - Do not remove legacy activity aliases when cleaning the public catalog.
-  - Do not combine the automatic recovery draft with named snapshots.
-- Suggested next step: Use the live builder for the kids weekend. If the rules-sheet idea still feels useful after another real printout, specify the optional Activity Guide as the next release.
+  - Do not deploy with Vercel CLI or from the dirty website checkout. Production deploys from a scoped commit pushed through the isolated site worktree.
+  - Do not combine the automatic recovery draft with named browser snapshots.
+  - Do not make the built-in template a named snapshot or permit direct overwrite.
+- Suggested next step: Use the live builder. If rules-heavy activities still need more explanation after another printout, specify the optional Activity Guide sheet.
 - Last tool + date: Codex, 2026-07-24.
