@@ -1,13 +1,21 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import type { SavedBoardSnapshot } from '../store/savedBoards';
 
+export interface BuiltInBoardOption {
+  id: string;
+  name: string;
+  description: string;
+}
+
 interface BoardFileDialogProps {
+  builtInBoards: BuiltInBoardOption[];
   snapshots: SavedBoardSnapshot[];
   activeName: string | null;
   suggestedName: string;
   initialFocus: 'browse' | 'save';
   error: string;
   onClose: () => void;
+  onOpenBuiltIn: (id: string) => void;
   onOpen: (name: string) => void;
   onSaveAs: (name: string) => boolean;
 }
@@ -23,12 +31,14 @@ function savedAtLabel(savedAt: string): string {
 }
 
 export function BoardFileDialog({
+  builtInBoards,
   snapshots,
   activeName,
   suggestedName,
   initialFocus,
   error,
   onClose,
+  onOpenBuiltIn,
   onOpen,
   onSaveAs,
 }: BoardFileDialogProps) {
@@ -84,7 +94,7 @@ export function BoardFileDialog({
     >
         <div className="board-file-dialog-heading">
           <div>
-            <span className="eyebrow">Your browser</span>
+            <span className="eyebrow">Board library</span>
             <h2 id="saved-boards-heading">Saved boards</h2>
           </div>
           <button ref={closeButton} className="ghost" type="button" onClick={onClose}>
@@ -92,37 +102,68 @@ export function BoardFileDialog({
           </button>
         </div>
 
-        <div className="saved-board-list" aria-label="Named boards">
-          {snapshots.length === 0 ? (
-            <p className="saved-board-empty">
-              No named boards yet. Save this board below so you can return to it later.
-            </p>
-          ) : (
-            snapshots.map((snapshot) => (
-              <div
-                className={`saved-board-row${snapshot.name === activeName ? ' active' : ''}`}
-                key={snapshot.name}
-              >
+        <section className="board-library-section" aria-labelledby="built-in-boards-heading">
+          <div className="board-library-heading">
+            <h3 id="built-in-boards-heading">Built-in boards</h3>
+            <span>Ready to customize</span>
+          </div>
+          <div className="saved-board-list built-in-board-list">
+            {builtInBoards.map((board) => (
+              <div className="saved-board-row built-in" key={board.id}>
                 <div className="saved-board-copy">
-                  <strong>{snapshot.name}</strong>
-                  <span>
-                    {snapshot.name === activeName ? 'Current board · ' : ''}
-                    {savedAtLabel(snapshot.savedAt)}
-                  </span>
+                  <strong>{board.name}</strong>
+                  <span>{board.description}</span>
                 </div>
                 <button
                   className="secondary"
                   type="button"
                   data-board-open
-                  aria-label={`Open ${snapshot.name}`}
-                  onClick={() => onOpen(snapshot.name)}
+                  aria-label={`Open ${board.name}`}
+                  onClick={() => onOpenBuiltIn(board.id)}
                 >
                   Open
                 </button>
               </div>
-            ))
-          )}
-        </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="board-library-section" aria-labelledby="browser-boards-heading">
+          <div className="board-library-heading">
+            <h3 id="browser-boards-heading">Saved in this browser</h3>
+          </div>
+          <div className="saved-board-list browser-board-list">
+            {snapshots.length === 0 ? (
+              <p className="saved-board-empty">
+                No named boards yet. Save this board below so you can return to it later.
+              </p>
+            ) : (
+              snapshots.map((snapshot) => (
+                <div
+                  className={`saved-board-row${snapshot.name === activeName ? ' active' : ''}`}
+                  key={snapshot.name}
+                >
+                  <div className="saved-board-copy">
+                    <strong>{snapshot.name}</strong>
+                    <span>
+                      {snapshot.name === activeName ? 'Current board · ' : ''}
+                      {savedAtLabel(snapshot.savedAt)}
+                    </span>
+                  </div>
+                  <button
+                    className="secondary"
+                    type="button"
+                    data-board-open
+                    aria-label={`Open ${snapshot.name}`}
+                    onClick={() => onOpen(snapshot.name)}
+                  >
+                    Open
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+        </section>
 
         <form className="board-save-as" onSubmit={submitSaveAs}>
           <div className="field">

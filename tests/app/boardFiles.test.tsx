@@ -57,6 +57,42 @@ describe('named board controls', () => {
     expect(useWizardStore.getState().activeSavedBoardName).toBe('Loaded board');
   });
 
+  it('opens the historical bachelor board as an unsaved built-in copy', async () => {
+    useWizardStore.getState().setStep(2);
+    render(<App metrics={testMetrics()} buffers={null} />);
+
+    await userEvent.click(screen.getByRole('button', { name: /^boards$/i }));
+    await userEvent.click(screen.getByRole('button', {
+      name: /open jesse maddox bachelor 2017/i,
+    }));
+
+    const state = useWizardStore.getState();
+    expect(state.step).toBe(2);
+    expect(state.activeSavedBoardName).toBeNull();
+    expect(state.draft.title).toBe('THE BACHELOR WEEKEND OF');
+    expect(state.draft.honoree).toBe('JESSE CORDELL MADDOX, III');
+    expect(state.draft.players).toHaveLength(30);
+    expect(state.draft.activities).toHaveLength(37);
+    expect(state.draft.rulesContent).toContain('SECTION 6. TERM');
+  });
+
+  it('keeps unsaved work when built-in replacement is canceled', async () => {
+    useWizardStore.getState().patch({ subtitle: 'Keep this work' });
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    render(<App metrics={testMetrics()} buffers={null} />);
+
+    await userEvent.click(screen.getByRole('button', { name: /^boards$/i }));
+    await userEvent.click(screen.getByRole('button', {
+      name: /open jesse maddox bachelor 2017/i,
+    }));
+
+    expect(confirm).toHaveBeenCalledWith(
+      'Open this built-in board? Unsaved changes will be replaced.',
+    );
+    expect(useWizardStore.getState().draft.subtitle).toBe('Keep this work');
+    expect(screen.getByRole('dialog', { name: /saved boards/i })).toBeDefined();
+  });
+
   it('requires confirmation before replacing unsaved changes', async () => {
     saveBoard('Other board', defaultDraft());
     useWizardStore.getState().patch({ subtitle: 'Unsaved work' });

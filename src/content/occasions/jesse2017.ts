@@ -186,7 +186,7 @@ export function createJesse2017Draft(): Draft {
 
 export const JESSE_2017_OCCASION: OccasionPack = {
   id: 'jesse-bachelor-2017',
-  name: 'My Bachelor Party Weekend',
+  name: 'Jesse Maddox Bachelor 2017',
   description: 'The complete 2017 roster, scoring activities, results boxes, target, and agreement.',
   createDraft: createJesse2017Draft,
 };

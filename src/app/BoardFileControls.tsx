@@ -8,12 +8,18 @@ import {
   workingDraftHasChanges,
   type SavedBoardSnapshot,
 } from '../store/savedBoards';
+import { OCCASION_PACKS, occasionById } from '../content/occasions';
 import { useWizardStore } from '../store/wizardStore';
 import { BoardFileDialog } from './BoardFileDialog';
 
 type DialogFocus = 'browse' | 'save';
 
 const SAVE_ERROR = 'Could not save this board in your browser. Your current work is still here.';
+const BUILT_IN_BOARDS = OCCASION_PACKS.map(({ id, name, description }) => ({
+  id,
+  name,
+  description,
+}));
 
 export function BoardFileControls() {
   const {
@@ -55,6 +61,11 @@ export function BoardFileControls() {
     : isSaved
       ? 'Saved'
       : 'Unsaved changes';
+  const hasUnsavedChanges = useCallback(() => (
+    activeSavedBoardName === null
+      ? workingDraftHasChanges(draft)
+      : !savedBoardMatchesDraft(activeSavedBoardName, draft)
+  ), [activeSavedBoardName, draft]);
 
   const openDialog = useCallback((focus: DialogFocus, opener: HTMLButtonElement | null) => {
     refreshSnapshots();
@@ -127,11 +138,8 @@ export function BoardFileControls() {
   ]);
 
   const openBoard = useCallback((name: string) => {
-    const hasUnsavedChanges = activeSavedBoardName === null
-      ? workingDraftHasChanges(draft)
-      : !savedBoardMatchesDraft(activeSavedBoardName, draft);
     if (
-      hasUnsavedChanges
+      hasUnsavedChanges()
       && !window.confirm('Open this saved board? Unsaved changes will be replaced.')
     ) return;
 
@@ -147,7 +155,25 @@ export function BoardFileControls() {
     setAnnouncement(`Opened ${name}.`);
     setDialogFocus(null);
     setError('');
-  }, [activeSavedBoardName, draft, refreshSnapshots, replaceDraft]);
+  }, [hasUnsavedChanges, refreshSnapshots, replaceDraft]);
+
+  const openBuiltInBoard = useCallback((id: string) => {
+    if (
+      hasUnsavedChanges()
+      && !window.confirm('Open this built-in board? Unsaved changes will be replaced.')
+    ) return;
+
+    const occasion = occasionById(id);
+    if (!occasion) {
+      setError('That built-in board is no longer available.');
+      return;
+    }
+
+    replaceDraft(occasion.createDraft(), null);
+    setAnnouncement(`Opened ${occasion.name}.`);
+    setDialogFocus(null);
+    setError('');
+  }, [hasUnsavedChanges, replaceDraft]);
 
   useEffect(() => {
     const wasOpen = previousDialogFocus.current !== null;
@@ -221,12 +247,14 @@ export function BoardFileControls() {
 
       {dialogFocus !== null && (
         <BoardFileDialog
+          builtInBoards={BUILT_IN_BOARDS}
           snapshots={snapshots}
           activeName={activeSavedBoardName}
           suggestedName={draft.title.trim() || 'My game board'}
           initialFocus={dialogFocus}
           error={error}
           onClose={closeDialog}
+          onOpenBuiltIn={openBuiltInBoard}
           onOpen={openBoard}
           onSaveAs={saveAs}
         />

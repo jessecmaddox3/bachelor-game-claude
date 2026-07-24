@@ -254,8 +254,9 @@ describe('occasion packs', () => {
     );
   });
 
-  it('labels the historical preset as My Bachelor Party Weekend', () => {
-    expect(OCCASION_PACKS.find((pack) => pack.id === 'jesse-bachelor-2017')?.name).toBe('My Bachelor Party Weekend');
+  it('labels the historical preset as Jesse Maddox Bachelor 2017', () => {
+    expect(OCCASION_PACKS.find((pack) => pack.id === 'jesse-bachelor-2017')?.name)
+      .toBe('Jesse Maddox Bachelor 2017');
   });
 
   it('maps every listed activity exactly and parses to a valid BoardSpec', () => {
