@@ -3,7 +3,6 @@ import { useWizardStore } from '../../store/wizardStore';
 import { ACTIVITY_OCCASIONS, ACTIVITY_OCCASION_LABELS, type ActivityOccasion } from '../../content/activities';
 import { OCCASION_PACKS, occasionById } from '../../content/occasions';
 import { defaultDraft, sortParticipantNames } from '../../store/toBoardSpec';
-import { listSavedBoards, loadSavedBoard, saveBoard } from '../../store/savedBoards';
 
 // Obviously-example (never personal) titles so the placeholder matches the
 // chosen occasion instead of assuming a specific person's bachelor weekend.
@@ -32,9 +31,6 @@ export function SetupStep() {
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editingName, setEditingName] = useState('');
   const [presetId, setPresetId] = useState(OCCASION_PACKS[0]?.id ?? '');
-  const [savedBoards, setSavedBoards] = useState(listSavedBoards);
-  const [saveName, setSaveName] = useState('');
-  const [savedName, setSavedName] = useState(savedBoards[0]?.name ?? '');
   const playerInput = useRef<HTMLInputElement>(null);
 
   const addPlayers = (value = newPlayer) => {
@@ -68,28 +64,6 @@ export function SetupStep() {
     if (hasWork && !window.confirm('Load this preset? It replaces your current board.')) return;
     replaceDraft(preset.createDraft());
     setEditingIndex(null);
-    setNewPlayer('');
-  };
-
-  const saveCurrentBoard = () => {
-    const name = saveName.trim();
-    if (!name) return;
-    const wouldOverwrite = savedBoards.some((snapshot) => snapshot.name === name);
-    if (wouldOverwrite && !window.confirm('Overwrite this saved board?')) return;
-    const saved = saveBoard(name, draft);
-    setSavedBoards(listSavedBoards());
-    setSavedName(saved.name);
-    setSaveName(saved.name);
-  };
-
-  const loadNamedBoard = () => {
-    const savedDraft = loadSavedBoard(savedName);
-    if (!savedDraft) return;
-    const hasChanges = JSON.stringify(draft) !== JSON.stringify(savedDraft);
-    if (hasChanges && !window.confirm('Load this saved board? It replaces your current board.')) return;
-    replaceDraft(savedDraft);
-    setEditingIndex(null);
-    setEditingName('');
     setNewPlayer('');
   };
 
@@ -157,44 +131,6 @@ export function SetupStep() {
           <div className="field">
             <label htmlFor="subtitle">Subtitle</label>
             <input id="subtitle" value={draft.subtitle} onChange={(event) => patch({ subtitle: event.target.value })} maxLength={80} placeholder={SUBTITLE_PLACEHOLDER} />
-          </div>
-        </div>
-      </section>
-
-      <section className="setup-section board-saves-section" aria-labelledby="board-saves-heading">
-        <div className="section-heading">
-          <div>
-            <h3 id="board-saves-heading">Save or load a board</h3>
-            <p>Keep named copies of the full roster, activities, and design in this browser.</p>
-          </div>
-        </div>
-        <div className="board-save-grid">
-          <div className="board-save-control">
-            <div className="field">
-              <label htmlFor="boardSaveName">Board name</label>
-              <div className="board-save-action">
-                <input
-                  id="boardSaveName"
-                  value={saveName}
-                  maxLength={80}
-                  placeholder="Kids weekend draft"
-                  onChange={(event) => setSaveName(event.target.value)}
-                />
-                <button className="secondary" onClick={saveCurrentBoard} disabled={!saveName.trim()}>Save board</button>
-              </div>
-            </div>
-          </div>
-          <div className="board-save-control">
-            <div className="field">
-              <label htmlFor="savedBoard">Saved board</label>
-              <div className="board-save-action">
-                <select id="savedBoard" value={savedName} onChange={(event) => setSavedName(event.target.value)}>
-                  {savedBoards.length === 0 && <option value="">No saved boards yet</option>}
-                  {savedBoards.map((snapshot) => <option key={snapshot.name} value={snapshot.name}>{snapshot.name}</option>)}
-                </select>
-                <button className="secondary" onClick={loadNamedBoard} disabled={!savedName}>Load saved board</button>
-              </div>
-            </div>
           </div>
         </div>
       </section>

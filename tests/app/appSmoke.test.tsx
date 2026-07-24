@@ -26,6 +26,7 @@ describe('App', () => {
 
   it('Start over resets the draft to defaults after confirmation', () => {
     useWizardStore.getState().reset();
+    useWizardStore.getState().setActiveSavedBoardName('Weekend board');
     vi.spyOn(window, 'confirm').mockReturnValue(true);
     render(<App metrics={testMetrics()} buffers={null} />);
     useWizardStore.getState().patch({ honoree: 'CUSTOM GUY' });
@@ -33,6 +34,7 @@ describe('App', () => {
     fireEvent.click(screen.getByText('Start over'));
     expect(window.confirm).toHaveBeenCalledOnce();
     expect(useWizardStore.getState().draft.honoree).toBe('');
+    expect(useWizardStore.getState().activeSavedBoardName).toBeNull();
   });
 
   it('shows Letter fit guidance with the authoritative preview', async () => {

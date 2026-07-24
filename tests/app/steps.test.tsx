@@ -6,7 +6,7 @@ import { SetupStep } from '../../src/app/steps/SetupStep';
 import { ActivitiesStep } from '../../src/app/steps/ActivitiesStep';
 import { DesignStep } from '../../src/app/steps/DesignStep';
 import { useWizardStore } from '../../src/store/wizardStore';
-import { SAVED_BOARDS_KEY, listSavedBoards, saveBoard } from '../../src/store/savedBoards';
+import { SAVED_BOARDS_KEY } from '../../src/store/savedBoards';
 import { THEME_PRESETS } from '../../src/content/themes';
 import { testMetrics } from '../helpers/loadFonts';
 
@@ -23,63 +23,6 @@ afterEach(() => {
 const designProps = { board: { status: 'loading' } as const, metrics: testMetrics(), buffers: null };
 
 describe('SetupStep', () => {
-  it('saves the current draft by name and adds it to the saved-board dropdown', async () => {
-    useWizardStore.getState().patch({
-      players: ['Jack', 'Bobbie'],
-      activities: [{ uid: crypto.randomUUID(), name: 'Dance party', points: 3, bonus: false }],
-      theme: { titleColor: '#123456' },
-    });
-    render(<SetupStep />);
-
-    await userEvent.type(screen.getByLabelText(/^board name$/i), 'Kids weekend draft');
-    await userEvent.click(screen.getByRole('button', { name: /^save board$/i }));
-
-    expect(listSavedBoards().map((snapshot) => snapshot.name)).toEqual(['Kids weekend draft']);
-    expect(screen.getByRole('combobox', { name: /^saved board$/i })).toHaveValue('Kids weekend draft');
-    expect(screen.getByRole('option', { name: 'Kids weekend draft' })).toBeDefined();
-  });
-
-  it('confirms a same-name overwrite and preserves the old snapshot when declined', async () => {
-    const original = structuredClone(useWizardStore.getState().draft);
-    original.title = 'Original saved title';
-    saveBoard('Weekend board', original);
-    useWizardStore.getState().patch({ title: 'Unsaved replacement title' });
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
-    render(<SetupStep />);
-
-    await userEvent.type(screen.getByLabelText(/^board name$/i), 'Weekend board');
-    await userEvent.click(screen.getByRole('button', { name: /^save board$/i }));
-
-    expect(confirm).toHaveBeenCalledOnce();
-    expect(listSavedBoards()).toHaveLength(1);
-    expect(listSavedBoards()[0]?.draft.title).toBe('Original saved title');
-  });
-
-  it('confirms before loading a different saved draft and restores it only when accepted', async () => {
-    const saved = structuredClone(useWizardStore.getState().draft);
-    saved.players = ['Jack', 'Bobbie', 'Caz'];
-    saved.activities = [{ uid: crypto.randomUUID(), name: 'Treasure hunt', points: 5, bonus: true }];
-    saved.theme = { titleColor: '#123456', subtitleColor: '#654321' };
-    saveBoard('Kids weekend', saved);
-    useWizardStore.getState().patch({
-      players: ['Customized player'],
-      activities: [],
-      theme: { titleColor: '#abcdef' },
-    });
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
-    render(<SetupStep />);
-
-    await userEvent.click(screen.getByRole('button', { name: /^load saved board$/i }));
-    expect(confirm).toHaveBeenLastCalledWith('Load this saved board? It replaces your current board.');
-    expect(useWizardStore.getState().draft.players).toEqual(['Customized player']);
-
-    confirm.mockReturnValue(true);
-    await userEvent.click(screen.getByRole('button', { name: /^load saved board$/i }));
-    expect(useWizardStore.getState().draft.players).toEqual(['Jack', 'Bobbie', 'Caz']);
-    expect(useWizardStore.getState().draft.activities).toEqual(saved.activities);
-    expect(useWizardStore.getState().draft.theme).toEqual(saved.theme);
-  });
-
   it('loads the Jesse 2017 occasion pack', async () => {
     render(<SetupStep />);
     await userEvent.click(screen.getByRole('button', { name: /load preset/i }));
@@ -139,12 +82,12 @@ describe('SetupStep', () => {
     expect(screen.getByRole('radio', { name: '🏡 Friends Weekend' })).toBeDefined();
   });
 
-  it('keeps preset loading beside occasion selection and labels it separately from saved boards', () => {
+  it('keeps preset loading in Setup without duplicating document controls', () => {
     render(<SetupStep />);
-    const section = screen.getByRole('region', { name: /choose an occasion/i });
-    expect(section).toContainElement(screen.getByRole('combobox', { name: 'Occasion preset' }));
-    expect(section).toContainElement(screen.getByRole('button', { name: /load preset/i }));
-    expect(section).not.toContainElement(screen.getByRole('combobox', { name: 'Saved board' }));
+    expect(screen.getByRole('button', { name: /load preset/i })).toBeDefined();
+    expect(screen.queryByRole('button', { name: /^save$/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: /^boards$/i })).toBeNull();
+    expect(screen.queryByLabelText(/^saved board$/i)).toBeNull();
   });
 
   it('adds players as removable chips with Enter and keeps the input ready', async () => {

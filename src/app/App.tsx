@@ -4,6 +4,7 @@ import { Preview } from './Preview';
 import { SetupStep } from './steps/SetupStep';
 import { ActivitiesStep } from './steps/ActivitiesStep';
 import { DesignStep } from './steps/DesignStep';
+import { BoardFileControls } from './BoardFileControls';
 import type { FontMetrics, FontBuffers } from '../engine';
 
 const STEPS = ['Setup', 'Activities', 'Design'] as const;
@@ -39,9 +40,12 @@ export function App({ metrics, buffers }: { metrics: FontMetrics; buffers: FontB
             </button>
           ))}
         </nav>
-        <button className="ghost header-action" onClick={() => window.confirm('Start over? This clears the current board.') && reset()}>
-          Start over
-        </button>
+        <div className="header-actions">
+          <BoardFileControls />
+          <button className="ghost header-action" onClick={() => window.confirm('Start over? This clears the current board.') && reset()}>
+            Start over
+          </button>
+        </div>
       </header>
       <main className="builder-layout">
         <section className="panel">
